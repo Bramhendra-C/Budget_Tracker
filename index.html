@@ -312,7 +312,7 @@
                         <!-- Back Arrow -->
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     </button>
-                    <h2 class="text-xl font-extrabold text-gray-800">All Transactions</h2>
+                    <h2 class="text-xl font-extrabold text-gray-800">View All</h2>
                     <div class="w-8"></div> <!-- Spacer for alignment -->
                 </header>
                 <div id="grouped-transaction-list" class="space-y-6">
@@ -406,7 +406,9 @@
          */
         const saveTransactions = () => {
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+                // Filter out any transactions without a proper timestamp before saving
+                const transactionsToSave = transactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(transactionsToSave));
                 
                 // Manually trigger UI updates after saving
                 renderSummary();
@@ -546,8 +548,16 @@
                 return;
             }
 
+            // FILTER: Ensure only valid transactions are processed
+            const validTransactions = transactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
+
+            if (validTransactions.length === 0) {
+                 listElement.innerHTML = '<p class="text-center text-gray-500 p-4">No valid transactions to show.</p>';
+                return;
+            }
+
             // Sort transactions by timestamp (most recent first) and show only the last 10
-            const sortedTransactions = [...transactions].sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds).slice(0, 10);
+            const sortedTransactions = [...validTransactions].sort((a, b) => b.timestamp.seconds - a.timestamp.seconds).slice(0, 10);
 
             sortedTransactions.forEach(t => {
                 listElement.appendChild(createTransactionElement(t));
@@ -562,6 +572,9 @@
         const calculateMonthlyNetFlow = (allTransactions) => {
             const monthlyFlow = new Map();
             allTransactions.forEach(t => {
+                // Ensure timestamp validity for calculation
+                if (!t.timestamp || typeof t.timestamp.seconds !== 'number') return; 
+
                 const date = new Date(t.timestamp.seconds * 1000);
                 const yearMonthKey = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
                 const amount = Number(t.amount);
@@ -573,39 +586,68 @@
         };
 
         /**
-         * Renders all transactions grouped by date for the full list view, including monthly summaries.
+         * Helper to calculate the net flow for every day in the data set.
+         * @param {Array<object>} allTransactions - List of all transactions.
+         * @returns {Map<string, number>} Map of "YYYY-MM-DD" to net flow amount.
+         */
+        const calculateDailyNetFlow = (allTransactions) => {
+            const dailyFlow = new Map();
+            allTransactions.forEach(t => {
+                // Ensure timestamp validity for calculation
+                if (!t.timestamp || typeof t.timestamp.seconds !== 'number') return; 
+
+                const date = new Date(t.timestamp.seconds * 1000);
+                const dateKey = date.toLocaleDateString('en-US'); // YYYY/MM/DD format used as key
+                const amount = Number(t.amount);
+                const flow = t.type === 'income' ? amount : -amount;
+                
+                dailyFlow.set(dateKey, (dailyFlow.get(dateKey) || 0) + flow);
+            });
+            return dailyFlow;
+        };
+
+
+        /**
+         * Renders all transactions grouped by date for the full list view, including monthly and daily summaries.
          */
         const renderAllTransactions = () => {
             const listElement = document.getElementById('grouped-transaction-list');
             listElement.innerHTML = '';
 
-            if (transactions.length === 0) {
+            // FILTER: Use a filtered array to ensure stability
+            const validTransactions = transactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
+            
+            if (validTransactions.length === 0) {
                 listElement.innerHTML = '<p class="text-center text-gray-500 p-8">No transactions recorded.</p>';
                 return;
             }
 
-            const sortedTransactions = [...transactions].sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds);
-            const monthlyNetFlows = calculateMonthlyNetFlow(transactions);
+            // Sort only valid transactions (most recent first)
+            const sortedTransactions = [...validTransactions].sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+            const monthlyNetFlows = calculateMonthlyNetFlow(validTransactions); // For monthly summary
+            const dailyNetFlows = calculateDailyNetFlow(validTransactions); // For daily summary
 
             let lastMonthKey = null;
+            let lastDateKey = null; // Track the last rendered day key
 
-            // 1. Group transactions by day
-            const groupedByDay = sortedTransactions.reduce((acc, t) => {
-                const dateKey = formatDateKey(t.timestamp.seconds * 1000, true); // Use full date string for grouping key
+            // 1. Group transactions by day (and maintain insertion order)
+            const groupedByDateKey = sortedTransactions.reduce((acc, t) => {
+                const dateKey = formatDateKey(t.timestamp.seconds * 1000, true); 
                 if (!acc[dateKey]) acc[dateKey] = [];
                 acc[dateKey].push(t);
                 return acc;
             }, {});
+
             
-            // 2. Render groups and insert monthly summaries
-            for (const dateKey in groupedByDay) {
-                const dayGroup = groupedByDay[dateKey];
+            // 2. Render groups and insert monthly/daily summaries
+            for (const dateKey in groupedByDateKey) {
+                const dayGroup = groupedByDateKey[dateKey];
                 const firstTransactionDate = new Date(dayGroup[0].timestamp.seconds * 1000);
                 const currentMonthKey = firstTransactionDate.getFullYear() + '-' + String(firstTransactionDate.getMonth() + 1).padStart(2, '0');
 
-                // Check for Month Change (and ensure it's not the first group)
+                // --- MONTHLY SUMMARY CHECK ---
+                // Only render if the month has changed (and not the first group overall)
                 if (lastMonthKey !== currentMonthKey) {
-                    // This is a new month, insert the Monthly Net Flow Header
                     const netFlow = monthlyNetFlows.get(currentMonthKey) || 0;
                     const isSurplus = netFlow >= 0;
                     const flowClass = isSurplus ? 'text-emerald-600' : 'text-red-600';
@@ -614,27 +656,39 @@
                     const monthName = firstTransactionDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
 
                     const monthHeader = document.createElement('div');
-                    monthHeader.className = 'py-3 px-4 bg-gray-100 rounded-xl shadow-inner mb-2 flex justify-between items-center';
+                    monthHeader.className = 'py-3 px-4 bg-blue-50/70 border-b border-blue-200 shadow-inner mb-2 flex justify-between items-center mt-6 rounded-xl';
                     monthHeader.innerHTML = `
-                        <h4 class="text-lg font-bold text-gray-800">${monthName}</h4>
+                        <h4 class="text-base font-bold text-gray-800">Monthly Net Flow (${monthName})</h4>
                         <div class="text-right">
-                            <p class="text-xs font-semibold text-gray-600">${flowSign}</p>
-                            <p class="text-xl font-extrabold ${flowClass}">${formatCurrency(Math.abs(netFlow))}</p>
+                            <p class="text-xl font-extrabold ${flowClass}">${flowSign} ${formatCurrency(Math.abs(netFlow))}</p>
                         </div>
                     `;
                     listElement.appendChild(monthHeader);
                     lastMonthKey = currentMonthKey; // Update tracking variable
                 }
+                
+                // --- DAILY NET FLOW SUMMARY ---
+                const dailyFlow = dailyNetFlows.get(dateKey) || 0;
+                const isDailySurplus = dailyFlow >= 0;
+                const dailyFlowClass = isDailySurplus ? 'text-emerald-600' : 'text-red-600';
+                const dailyFlowSign = isDailySurplus ? 'Savings' : 'Deficit';
+                const dateDisplay = formatDateKey(firstTransactionDate.getTime(), false);
 
-                // Render Day Group Container
+                const dailyHeader = document.createElement('div');
+                dailyHeader.className = 'py-2 px-4 bg-gray-100/70 rounded-lg flex justify-between items-center mt-3 border-l-4 border-gray-300';
+                dailyHeader.innerHTML = `
+                    <h4 class="text-sm font-bold text-gray-800">${dateDisplay}</h4>
+                    <div class="text-right">
+                        <p class="text-xs font-semibold text-gray-600">Daily Net Flow (${dailyFlowSign})</p>
+                        <p class="text-lg font-extrabold ${dailyFlowClass}">${formatCurrency(Math.abs(dailyFlow))}</p>
+                    </div>
+                `;
+                listElement.appendChild(dailyHeader);
+
+
+                // --- RENDER TRANSACTIONS ---
                 const groupContainer = document.createElement('div');
                 groupContainer.className = 'primary-card p-4 space-y-2';
-
-                // Date Header (Today, Yesterday, or specific date)
-                const dateHeader = document.createElement('h3');
-                dateHeader.className = 'text-sm font-semibold text-gray-600 mb-2 border-b pb-2';
-                dateHeader.textContent = formatDateKey(firstTransactionDate.getTime(), false); // Use display format
-                groupContainer.appendChild(dateHeader);
 
                 // Transactions for the day
                 dayGroup.forEach(t => {
@@ -642,6 +696,7 @@
                 });
 
                 listElement.appendChild(groupContainer);
+                lastDateKey = dateKey;
             }
         };
 
@@ -654,10 +709,12 @@
             const now = new Date();
             const date = new Date(timestamp);
             
+            // Format for a standard key (e.g., "10/09/2025")
             const fullDateString = date.toLocaleDateString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric' });
             
             if (isKey) return fullDateString;
 
+            // Format for display (Today, Yesterday, Date)
             const isToday = date.toDateString() === now.toDateString();
             const yesterday = new Date(now);
             yesterday.setDate(now.getDate() - 1);
