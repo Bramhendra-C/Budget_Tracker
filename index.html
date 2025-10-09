@@ -295,6 +295,12 @@
                     <div class="h-80 w-full flex justify-center">
                          <canvas id="categoryBreakdownChart" class="max-h-80"></canvas>
                     </div>
+                    <!-- NEW: Total Expense Display below the chart -->
+                    <div class="mt-6 pt-4 border-t border-gray-100 text-center">
+                        <p class="text-base font-semibold text-gray-600">Total Expenses Analyzed</p>
+                        <p id="breakdown-total" class="text-3xl font-extrabold text-red-600 mt-1">$0.00</p>
+                    </div>
+                    <!-- END NEW TOTAL -->
                 </div>
             </div>
             <!-- END ANALYTICS VIEW -->
@@ -976,7 +982,12 @@
 
             const totalExpense = data.breakdownData.reduce((sum, val) => sum + val, 0);
 
+            // --- Update Total Expense Display below chart ---
+            document.getElementById('breakdown-total').textContent = formatCurrency(totalExpense);
+
+
             // --- Doughnut Chart Center Text Plugin (Improved Visualization) ---
+            // NOTE: The center text plugin is now decorative since the total is displayed below.
             const centerTextPlugin = {
                 id: 'centerText',
                 beforeDraw: (chart) => {
@@ -986,19 +997,14 @@
                     ctx.save();
                     const centerX = width / 2;
                     const centerY = height / 2;
-                    const totalFormatted = formatCurrency(totalExpense);
-
-                    // 1. Draw Total Label
-                    ctx.font = 'bold 0.8rem Inter';
-                    ctx.fillStyle = '#6b7280'; // gray-500
+                    
+                    // You can keep a simple label or remove this plugin if you only want the bottom label.
+                    // Keeping the center text minimal for a clean look.
+                    ctx.font = 'bold 1.1rem Inter';
+                    ctx.fillStyle = '#1f2937'; // gray-800
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText('Total Expense', centerX, centerY - 15);
-
-                    // 2. Draw Amount
-                    ctx.font = 'bold 1.9rem Inter'; // Slightly larger
-                    ctx.fillStyle = '#1f2937'; // gray-800
-                    ctx.fillText(totalFormatted, centerX, centerY + 15);
+                    ctx.fillText('Breakdown', centerX, centerY);
 
                     ctx.restore();
                 }
