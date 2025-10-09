@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Budget Tracker (Mobile App)</title>
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the app's visual appeal */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e5e7eb; /* Light gray background for the area outside the phone frame */
+            overscroll-behavior: none; /* Prevent scroll chaining on mobile */
+        }
+        /* Mobile Frame Simulation: Constrain the main content */
+        .app-frame {
+            max-width: 450px; 
+            margin: 0 auto; 
+            min-height: 100vh;
+            background-color: white; 
+            padding-bottom: 72px; /* Space for fixed bottom navigation */
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.15);
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .income-text { color: #059669; } /* Emerald-600 */
+        .expense-text { color: #dc2626; } /* Red-600 */
+        
+        /* Premium Main Card Gradient */
+        .main-balance-card {
+            background-image: linear-gradient(to right bottom, #2563eb, #4f46e5); /* blue-600 to indigo-600 */
+            color: white;
+            box-shadow: 0 15px 30px -5px rgba(37, 99, 235, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            border-radius: 1.5rem; 
+        }
+
+        .primary-card {
+            background-color: white;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+            border-radius: 1.5rem; /* rounded-3xl */
+        }
+        .small-card {
+            background-color: white;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+            border-radius: 0.75rem; /* rounded-xl */
+        }
+        
+        /* Input & Select Styling for dropdown indicator */
+        select#category, input[type="date"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236B7280'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5em 1.5em;
+        }
+        
+        /* Nav button active state */
+        .nav-button-active { color: #2563eb !important; }
+        
+        /* Chart selectors */
+        .trend-selector input:checked + span {
+            background-color: #1d4ed8; 
+            color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Message Box Styling */
+        #message-box {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            padding: 1rem 2rem;
+            border-radius: 1rem;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+
+        .show {
+            opacity: 1;
+        }
+
+        /* Custom style for the dominant amount input */
+        #amount {
+            -moz-appearance: textfield; /* Firefox */
+        }
+        #amount::-webkit-inner-spin-button, 
+        #amount::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+    </style>
+</head>
+<body class="p-0 md:p-8 min-h-screen">
+
+    <!-- Global Message Box for notifications (Replaces alert()) -->
+    <div id="message-box" class="bg-green-500 text-white shadow-lg"></div>
+
+
+    <!-- Main Application Frame (Simulates Mobile Screen) -->
+    <div class="app-frame relative overflow-hidden">
+        
+        <header class="p-6 pb-2 sticky top-0 z-10 bg-white">
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">
+                The Ledger
+            </h1>
+            <p class="text-xs text-gray-500 mt-1">Local Mode Active</p>
+        </header>
+
+        <!-- Main Content Wrapper (Scrollable area) -->
+        <div class="p-4 pt-0">
+
+            <!-- DASHBOARD VIEW -->
+            <div id="dashboard-view">
+                <!-- Main Dashboard Card (Current Balance) -->
+                <div class="main-balance-card p-6 mb-6 shadow-xl">
+                    <div class="flex justify-between items-center text-indigo-200 mb-2">
+                        <h3 class="text-lg font-semibold">Current Net Balance</h3>
+                    </div>
+                    <p id="balance" class="text-6xl font-extrabold text-white">$0.00</p>
+                </div>
+
+                <!-- Income and Expense Chips -->
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                    <div class="small-card p-4 border-l-4 border-emerald-500 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">Total Income</h3>
+                            <p id="income" class="text-xl font-bold income-text">$0.00</p>
+                        </div>
+                         <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8v2m0 4v2m-6 3h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <div class="small-card p-4 border-l-4 border-red-500 flex items-center justify-between">
+                         <div>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">Total Expense</h3>
+                            <p id="expense" class="text-xl font-bold expense-text">$0.00</p>
+                        </div>
+                        <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l-1 12H6L5 9z"></path></svg>
+                    </div>
+                </div>
+
+                <!-- Add New Transaction Form (Quick Add section) -->
+                <div class="primary-card p-6 mb-8">
+                    <h2 class="text-xl font-bold text-gray-800 mb-6">Quick Add Transaction</h2>
+                    
+                    <form id="transaction-form" class="space-y-6">
+
+                        <!-- 1. Dominant Amount Input -->
+                        <div class="text-center pb-4">
+                            <label for="amount" class="block text-sm font-medium text-gray-500">AMOUNT</label>
+                            <div class="flex items-center justify-center space-x-1 mt-1">
+                                <span class="text-4xl font-extrabold text-gray-700">$</span>
+                                <input type="number" id="amount" placeholder="0.00" step="0.01" required
+                                       class="text-5xl font-extrabold text-gray-900 border-b-2 border-gray-200 focus:border-blue-600 w-2/3 text-center p-0 appearance-none focus:outline-none bg-transparent transition-colors duration-200">
+                            </div>
+                        </div>
+
+                        <!-- 2. Segmented Type Control -->
+                        <div class="flex space-x-2 p-1 bg-gray-100 rounded-xl justify-center text-sm font-medium">
+                            <label class="flex-1 type-selector">
+                                <!-- Default to expense -->
+                                <input type="radio" name="transactionType" value="expense" checked class="hidden" onchange="updateTypeSelector(this)">
+                                <span id="type-expense-label" class="block text-center py-2 px-3 rounded-xl cursor-pointer transition-all duration-200 bg-red-600 text-white shadow-lg shadow-red-500/30">
+                                    <span class="font-extrabold">- EXPENSE</span>
+                                </span>
+                            </label>
+                            <label class="flex-1 type-selector">
+                                <input type="radio" name="transactionType" value="income" class="hidden" onchange="updateTypeSelector(this)">
+                                <span id="type-income-label" class="block text-center py-2 px-3 rounded-xl cursor-pointer transition-all duration-200 text-gray-700 hover:bg-white">
+                                    <span class="font-extrabold">+ INCOME</span>
+                                </span>
+                            </label>
+                        </div>
+                        
+                        <!-- 3. Remaining Inputs -->
+                        <div class="space-y-4 pt-2">
+                            <!-- Description -->
+                            <div>
+                                <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                                <input type="text" id="description" placeholder="e.g., Groceries, Paycheck, Rent" required
+                                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- Date -->
+                                <div>
+                                    <label for="date" class="block text-sm font-medium text-gray-700">Date (Optional)</label>
+                                    <input type="date" id="date" 
+                                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                </div>
+                                <!-- Category -->
+                                <div>
+                                    <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                                    <select id="category"
+                                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                        <option value="Uncategorized">Uncategorized</option>
+                                        <option value="Food">Food</option>
+                                        <option value="Transportation">Transportation</option>
+                                        <option value="Housing">Housing</option>
+                                        <option value="Entertainment">Entertainment</option>
+                                        <option value="Shopping">Shopping</option>
+                                        <option value="Utilities">Utilities</option>
+                                        <option value="Salary (Income)">Salary (Income)</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl transition duration-150 ease-in-out shadow-xl shadow-blue-500/50 flex items-center justify-center space-x-2 transform hover:scale-[1.01]">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m-4-8h8"></path></svg>
+                            <span>CONFIRM TRANSACTION</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Transaction History (Limited View) -->
+                <div class="primary-card p-6">
+                    <div class="flex justify-between items-center mb-4">
+                         <h2 class="text-2xl font-bold text-gray-800">Recent Transactions</h2>
+                         <button onclick="showView('list')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">View All</button>
+                    </div>
+
+                    <div id="transaction-list-dashboard" class="max-h-[50vh] space-y-3">
+                        <!-- Transactions will be rendered here by JavaScript -->
+                        <p id="loading-message" class="text-center text-gray-500 p-4">Loading transactions...</p>
+                    </div>
+                </div>
+            </div>
+            <!-- END DASHBOARD VIEW -->
+
+
+            <!-- ANALYTICS VIEW -->
+            <div id="analytics-view" class="hidden">
+                <div class="primary-card p-6 mb-6">
+                    <h2 id="trend-chart-title" class="text-xl font-bold text-gray-800 mb-4">Monthly Spending Trends</h2>
+                    
+                    <!-- Time Period Selector -->
+                    <div class="grid grid-cols-4 gap-2 p-1 bg-gray-100 rounded-xl mb-6 justify-center text-gray-700 font-semibold">
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="timePeriod" value="day" class="hidden" onchange="updateAnalyticsPeriod('day')">
+                            <span id="period-day-label" class="block text-center py-2 px-1 text-xs rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white text-gray-700">Day</span>
+                        </label>
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="timePeriod" value="week" class="hidden" onchange="updateAnalyticsPeriod('week')">
+                            <span id="period-week-label" class="block text-center py-2 px-1 text-xs rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white text-gray-700">Week</span>
+                        </label>
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="timePeriod" value="month" checked class="hidden" onchange="updateAnalyticsPeriod('month')">
+                            <span id="period-month-label" class="block text-center py-2 px-1 text-xs rounded-lg cursor-pointer transition-colors duration-200 bg-blue-600 text-white">Month</span>
+                        </label>
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="timePeriod" value="year" class="hidden" onchange="updateAnalyticsPeriod('year')">
+                            <span id="period-year-label" class="block text-center py-2 px-1 text-xs rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white text-gray-700">Year</span>
+                        </label>
+                    </div>
+
+                    <!-- Trend View Selector -->
+                    <div class="flex space-x-2 p-1 bg-gray-100 rounded-xl mb-6 justify-center trend-selector">
+                        <label class="flex-1">
+                            <input type="radio" name="trendView" value="expense" checked class="hidden" onchange="updateTrendChart()">
+                            <span id="trend-expense-label" class="block text-center py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors duration-200 bg-blue-600 text-white">Expense Only</span>
+                        </label>
+                        <label class="flex-1">
+                            <input type="radio" name="trendView" value="income_expense" class="hidden" onchange="updateTrendChart()">
+                            <span id="trend-income-expense-label" class="block text-center py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors duration-200 text-gray-700 hover:bg-white">Income + Expense</span>
+                        </label>
+                        <label class="flex-1">
+                            <input type="radio" name="trendView" value="net_flow" class="hidden" onchange="updateTrendChart()">
+                            <span id="trend-net-flow-label" class="block text-center py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors duration-200 text-gray-700 hover:bg-white">Net Flow</span>
+                        </label>
+                    </div>
+
+                    <div class="h-80 w-full">
+                        <canvas id="spendingTrendChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="primary-card p-6 mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Category Breakdown</h2>
+                    <p class="text-sm text-gray-500 mb-4">Expenses by category for the selected period.</p>
+                    <div class="h-80 w-full flex justify-center">
+                         <canvas id="categoryBreakdownChart" class="max-h-80"></canvas>
+                    </div>
+                </div>
+            </div>
+            <!-- END ANALYTICS VIEW -->
+
+            <!-- FULL TRANSACTION LIST VIEW (New View) -->
+            <div id="full-list-view" class="hidden">
+                <header class="flex items-center justify-between p-4 sticky top-0 bg-white border-b z-10 -mx-4 -mt-4 mb-4">
+                    <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
+                        <!-- Back Arrow -->
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 class="text-xl font-extrabold text-gray-800">All Transactions</h2>
+                    <div class="w-8"></div> <!-- Spacer for alignment -->
+                </header>
+                <div id="grouped-transaction-list" class="space-y-6">
+                    <!-- Grouped transactions will be rendered here -->
+                </div>
+            </div>
+            <!-- END FULL TRANSACTION LIST VIEW -->
+
+        </div>
+    </div>
+
+    <!-- Fixed Bottom Navigation Bar -->
+    <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 max-w-[450px] mx-auto bg-white border-t border-gray-200 shadow-2xl z-20 h-16 rounded-t-2xl flex justify-around items-center">
+        <!-- Dashboard Button -->
+        <button id="nav-dashboard" onclick="showView('dashboard')" class="flex flex-col items-center nav-button-active focus:outline-none transition-colors duration-200">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"></path></svg>
+            <span class="text-xs font-semibold">Dashboard</span>
+        </button>
+
+        <!-- Analytics Button -->
+        <button id="nav-analytics" onclick="showView('analytics')" class="flex flex-col items-center text-gray-500 hover:text-blue-600 transition-colors duration-200 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+            <span class="text-xs font-medium">Analytics</span>
+        </button>
+    </nav>
+    <!-- END NEW BOTTOM NAVIGATION BAR -->
+
+    <!-- START LOCAL STORAGE SCRIPT -->
+    <script type="module">
+        // --- GLOBAL SETUP & LOCAL STORAGE INIT ---
+
+        let transactions = [];
+        let trendChart, breakdownChart; // Global Chart.js instances
+        let aggregatedData = null; // Global variable to store aggregated data
+        let currentPeriod = 'month'; // Default period for analytics
+        
+        // Key for storing data in the browser's local storage
+        const STORAGE_KEY = 'budgetTrackerTransactions'; 
+
+        /**
+         * Converts a number to a currency string format.
+         * @param {number} amount - The numeric amount.
+         * @returns {string} - The formatted currency string.
+         */
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        };
+
+        /**
+         * Displays a temporary notification message (replaces alert()).
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success' or 'error'.
+         */
+        const showMessage = (message, type = 'success') => {
+            const box = document.getElementById('message-box');
+            box.textContent = message;
+            box.className = 'show'; // Reset classes to trigger transition
+
+            if (type === 'success') {
+                box.classList.add('bg-green-500');
+                box.classList.remove('bg-red-500');
+            } else if (type === 'error') {
+                box.classList.add('bg-red-500');
+                box.classList.remove('bg-green-500');
+            }
+
+            setTimeout(() => {
+                box.classList.remove('show');
+                box.classList.remove('bg-green-500', 'bg-red-500');
+            }, 3000);
+        };
+
+        /**
+         * Loads transactions array from the browser's localStorage.
+         */
+        const loadTransactions = () => {
+            try {
+                const storedData = localStorage.getItem(STORAGE_KEY);
+                transactions = storedData ? JSON.parse(storedData) : [];
+            } catch (e) {
+                console.error("Error loading transactions from local storage:", e);
+                transactions = [];
+            }
+        };
+
+        /**
+         * Saves the current transactions array to the browser's localStorage and updates the UI.
+         */
+        const saveTransactions = () => {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+                
+                // Manually trigger UI updates after saving
+                renderSummary();
+                renderRecentTransactions();
+                
+                // Only render charts/lists if their view is currently visible
+                if (!document.getElementById('analytics-view').classList.contains('hidden')) {
+                    aggregatedData = aggregateData(transactions, currentPeriod);
+                    renderCharts(aggregatedData);
+                } else if (!document.getElementById('full-list-view').classList.contains('hidden')) {
+                     renderAllTransactions();
+                }
+
+            } catch (e) {
+                console.error("Error saving transactions to local storage:", e);
+                showMessage("Error saving data.", 'error');
+            }
+        };
+
+
+        /**
+         * Initializes the application data in local storage mode.
+         */
+        const initLocalData = () => {
+            document.getElementById('loading-message')?.remove();
+            loadTransactions();
+            saveTransactions(); // Initial rendering
+        };
+
+        /**
+         * Switches the active view (Dashboard, Analytics, or List) and updates the navigation bar state.
+         * @param {string} viewName - 'dashboard', 'analytics', or 'list'.
+         */
+        const showView = (viewName) => {
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('analytics-view').classList.add('hidden');
+            document.getElementById('full-list-view').classList.add('hidden'); // Hide new list view
+
+            // Reset navigation bar colors
+            document.getElementById('nav-dashboard').classList.remove('nav-button-active', 'text-gray-500');
+            document.getElementById('nav-analytics').classList.remove('nav-button-active', 'text-gray-500');
+            document.getElementById('nav-dashboard').classList.add('text-gray-500');
+            document.getElementById('nav-analytics').classList.add('text-gray-500');
+
+
+            if (viewName === 'dashboard') {
+                document.getElementById('dashboard-view').classList.remove('hidden');
+                document.getElementById('nav-dashboard').classList.add('nav-button-active');
+            } else if (viewName === 'analytics') {
+                document.getElementById('analytics-view').classList.remove('hidden');
+                document.getElementById('nav-analytics').classList.add('nav-button-active');
+                
+                // Re-render charts when switching to the analytics view
+                aggregatedData = aggregateData(transactions, currentPeriod); 
+                renderCharts(aggregatedData);
+            } else if (viewName === 'list') {
+                document.getElementById('full-list-view').classList.remove('hidden');
+                // Ensure no nav button is active when on the list view (as it's a sub-page of dashboard)
+            }
+        };
+        
+        /**
+         * Updates the styling of the Income/Expense segmented control based on the radio selection.
+         * @param {HTMLElement} radio - The radio button that was clicked.
+         */
+        const updateTypeSelector = (radio) => {
+            const expenseLabel = document.getElementById('type-expense-label');
+            const incomeLabel = document.getElementById('type-income-label');
+            const isExpense = radio.value === 'expense';
+
+            if (isExpense) {
+                // Style Expense as selected
+                expenseLabel.classList.add('bg-red-600', 'text-white', 'shadow-lg', 'shadow-red-500/30');
+                expenseLabel.classList.remove('text-gray-700', 'hover:bg-white', 'shadow-none');
+                
+                // Style Income as unselected
+                incomeLabel.classList.remove('bg-green-600', 'text-white', 'shadow-lg', 'shadow-green-500/30');
+                incomeLabel.classList.add('text-gray-700', 'hover:bg-white', 'shadow-none');
+            } else {
+                // Style Income as selected
+                incomeLabel.classList.add('bg-green-600', 'text-white', 'shadow-lg', 'shadow-green-500/30');
+                incomeLabel.classList.remove('text-gray-700', 'hover:bg-white', 'shadow-none');
+                
+                // Style Expense as unselected
+                expenseLabel.classList.remove('bg-red-600', 'text-white', 'shadow-lg', 'shadow-red-500/30');
+                expenseLabel.classList.add('text-gray-700', 'hover:bg-white', 'shadow-none');
+            }
+        }
+
+        /**
+         * Renders the summary section (Balance, Income, Expense).
+         */
+        const renderSummary = () => {
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            transactions.forEach(t => {
+                const amount = parseFloat(t.amount);
+                if (t.type === 'income') {
+                    totalIncome += amount;
+                } else if (t.type === 'expense') {
+                    totalExpense += amount;
+                }
+            });
+
+            const balance = totalIncome - totalExpense;
+
+            // Update DOM elements for new Dashboard style
+            document.getElementById('balance').textContent = formatCurrency(balance);
+            // Balance color stays white on the gradient background
+            document.getElementById('income').textContent = formatCurrency(totalIncome);
+            document.getElementById('expense').textContent = formatCurrency(totalExpense);
+        };
+
+        /**
+         * Returns an SVG icon based on transaction type.
+         * @param {string} type - 'income' or 'expense'.
+         * @returns {string} - SVG string.
+         */
+        const getIcon = (type) => {
+            if (type === 'income') {
+                return `<svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>`;
+            } else {
+                return `<svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>`;
+            }
+        };
+
+        /**
+         * Renders the list of transactions for the Dashboard (Last 10).
+         */
+        const renderRecentTransactions = () => {
+            const listElement = document.getElementById('transaction-list-dashboard');
+            listElement.innerHTML = ''; 
+
+            if (transactions.length === 0) {
+                listElement.innerHTML = '<p class="text-center text-gray-500 p-4">No transactions recorded yet. Add one using Quick Add!</p>';
+                return;
+            }
+
+            // Sort transactions by timestamp (most recent first) and show only the last 10
+            const sortedTransactions = [...transactions].sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds).slice(0, 10);
+
+            sortedTransactions.forEach(t => {
+                listElement.appendChild(createTransactionElement(t));
+            });
+        };
+
+        /**
+         * Helper to calculate the net flow for every month in the data set.
+         * @param {Array<object>} allTransactions - List of all transactions.
+         * @returns {Map<string, number>} Map of "YYYY-MM" to net flow amount.
+         */
+        const calculateMonthlyNetFlow = (allTransactions) => {
+            const monthlyFlow = new Map();
+            allTransactions.forEach(t => {
+                const date = new Date(t.timestamp.seconds * 1000);
+                const yearMonthKey = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+                const amount = Number(t.amount);
+                const flow = t.type === 'income' ? amount : -amount;
+                
+                monthlyFlow.set(yearMonthKey, (monthlyFlow.get(yearMonthKey) || 0) + flow);
+            });
+            return monthlyFlow;
+        };
+
+        /**
+         * Renders all transactions grouped by date for the full list view, including monthly summaries.
+         */
+        const renderAllTransactions = () => {
+            const listElement = document.getElementById('grouped-transaction-list');
+            listElement.innerHTML = '';
+
+            if (transactions.length === 0) {
+                listElement.innerHTML = '<p class="text-center text-gray-500 p-8">No transactions recorded.</p>';
+                return;
+            }
+
+            const sortedTransactions = [...transactions].sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds);
+            const monthlyNetFlows = calculateMonthlyNetFlow(transactions);
+
+            let lastMonthKey = null;
+
+            // 1. Group transactions by day
+            const groupedByDay = sortedTransactions.reduce((acc, t) => {
+                const dateKey = formatDateKey(t.timestamp.seconds * 1000, true); // Use full date string for grouping key
+                if (!acc[dateKey]) acc[dateKey] = [];
+                acc[dateKey].push(t);
+                return acc;
+            }, {});
+            
+            // 2. Render groups and insert monthly summaries
+            for (const dateKey in groupedByDay) {
+                const dayGroup = groupedByDay[dateKey];
+                const firstTransactionDate = new Date(dayGroup[0].timestamp.seconds * 1000);
+                const currentMonthKey = firstTransactionDate.getFullYear() + '-' + String(firstTransactionDate.getMonth() + 1).padStart(2, '0');
+
+                // Check for Month Change (and ensure it's not the first group)
+                if (lastMonthKey !== currentMonthKey) {
+                    // This is a new month, insert the Monthly Net Flow Header
+                    const netFlow = monthlyNetFlows.get(currentMonthKey) || 0;
+                    const isSurplus = netFlow >= 0;
+                    const flowClass = isSurplus ? 'text-emerald-600' : 'text-red-600';
+                    const flowSign = isSurplus ? 'Surplus' : 'Deficit';
+                    
+                    const monthName = firstTransactionDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+
+                    const monthHeader = document.createElement('div');
+                    monthHeader.className = 'py-3 px-4 bg-gray-100 rounded-xl shadow-inner mb-2 flex justify-between items-center';
+                    monthHeader.innerHTML = `
+                        <h4 class="text-lg font-bold text-gray-800">${monthName}</h4>
+                        <div class="text-right">
+                            <p class="text-xs font-semibold text-gray-600">${flowSign}</p>
+                            <p class="text-xl font-extrabold ${flowClass}">${formatCurrency(Math.abs(netFlow))}</p>
+                        </div>
+                    `;
+                    listElement.appendChild(monthHeader);
+                    lastMonthKey = currentMonthKey; // Update tracking variable
+                }
+
+                // Render Day Group Container
+                const groupContainer = document.createElement('div');
+                groupContainer.className = 'primary-card p-4 space-y-2';
+
+                // Date Header (Today, Yesterday, or specific date)
+                const dateHeader = document.createElement('h3');
+                dateHeader.className = 'text-sm font-semibold text-gray-600 mb-2 border-b pb-2';
+                dateHeader.textContent = formatDateKey(firstTransactionDate.getTime(), false); // Use display format
+                groupContainer.appendChild(dateHeader);
+
+                // Transactions for the day
+                dayGroup.forEach(t => {
+                    groupContainer.appendChild(createTransactionElement(t, true));
+                });
+
+                listElement.appendChild(groupContainer);
+            }
+        };
+
+        /**
+         * Helper to format the date key for grouping (Today, Yesterday, Date).
+         * @param {number} timestamp - Milliseconds since epoch.
+         * @param {boolean} isKey - If true, returns a full date string for grouping.
+         */
+        const formatDateKey = (timestamp, isKey) => {
+            const now = new Date();
+            const date = new Date(timestamp);
+            
+            const fullDateString = date.toLocaleDateString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric' });
+            
+            if (isKey) return fullDateString;
+
+            const isToday = date.toDateString() === now.toDateString();
+            const yesterday = new Date(now);
+            yesterday.setDate(now.getDate() - 1);
+            const isYesterday = date.toDateString() === yesterday.toDateString();
+
+            if (isToday) return "Today";
+            if (isYesterday) return "Yesterday";
+
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        };
+
+
+        /**
+         * Creates a single transaction HTML element.
+         * @param {object} t - Transaction object.
+         * @param {boolean} isFullList - If true, apply minimal padding/margin for grouped list.
+         */
+        const createTransactionElement = (t, isFullList = false) => {
+            const isIncome = t.type === 'income';
+            const sign = isIncome ? '+' : '-';
+            const amountClass = isIncome ? 'income-text' : 'expense-text';
+            
+            const date = new Date(t.timestamp?.seconds * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const category = t.category || 'N/A';
+
+            const listItem = document.createElement('div');
+            listItem.className = `flex justify-between items-center ${isFullList ? 'py-2' : 'p-3'} hover:bg-gray-50 rounded-lg transition duration-100 ease-in-out`;
+            listItem.dataset.docId = t.id;
+
+            listItem.innerHTML = `
+                <div class="flex items-center space-x-4 flex-1 min-w-0">
+                    <!-- Icon -->
+                    <div class="p-2 rounded-full ${isIncome ? 'bg-emerald-100' : 'bg-red-100'}">
+                        ${getIcon(t.type)}
+                    </div>
+                    <!-- Description and Category -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-gray-900 font-semibold truncate">${t.description}</p>
+                        <div class="flex items-center space-x-2 text-gray-500 text-sm">
+                            <span>${category}</span>
+                            <span class="text-xs text-gray-400">· ${date}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <!-- Amount -->
+                    <span class="text-lg font-bold ${amountClass} text-right">
+                        ${sign}${formatCurrency(t.amount)}
+                    </span>
+                    <!-- Delete Button -->
+                    <button class="delete-btn text-gray-400 hover:text-red-500 transition-colors duration-150 p-1 rounded"
+                            data-doc-id="${t.id}" title="Delete Transaction">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            `;
+            
+            // Attach delete listener
+            listItem.querySelector('.delete-btn').addEventListener('click', (e) => {
+                const docId = e.currentTarget.dataset.docId;
+                if (docId) {
+                    deleteTransaction(docId);
+                }
+            });
+
+            return listItem;
+        };
+
+
+        // --- ANALYTICS AND CHARTING LOGIC (Updated for Day/Week) ---
+
+        const aggregateData = (allTransactions, period) => {
+            const transactionsWithTimestamp = allTransactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
+            const periodExpenses = new Map(); 
+            const periodIncomes = new Map(); 
+            const categoryExpenses = new Map(); 
+            const today = new Date();
+            
+            let timeWindowStart;
+            let totalPeriods;
+            let getLabel;
+            let getKey;
+
+            if (period === 'day') {
+                // Last 7 days
+                totalPeriods = 7;
+                timeWindowStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (totalPeriods - 1));
+                timeWindowStart.setHours(0, 0, 0, 0); // Start of the first day
+                getKey = (date) => date.toLocaleDateString('en-US');
+                getLabel = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } else if (period === 'week') {
+                // Last 6 weeks (based on Sunday start)
+                totalPeriods = 6;
+                // Calculate the start of the current week (Sunday)
+                const startOfThisWeek = new Date(today);
+                startOfThisWeek.setDate(today.getDate() - today.getDay());
+                startOfThisWeek.setHours(0, 0, 0, 0);
+                
+                timeWindowStart = new Date(startOfThisWeek);
+                timeWindowStart.setDate(startOfThisWeek.getDate() - (totalPeriods - 1) * 7);
+
+                getKey = (date) => {
+                    // Key by the Sunday date of the week
+                    const d = new Date(date);
+                    d.setDate(d.getDate() - d.getDay()); // Go to Sunday
+                    return d.toLocaleDateString('en-US');
+                };
+                getLabel = (date) => {
+                    const d = new Date(date);
+                    d.setDate(d.getDate() - d.getDay()); // Go to Sunday
+                    return 'Wk of ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                };
+            } else if (period === 'month') {
+                // Last 6 months
+                totalPeriods = 6;
+                timeWindowStart = new Date(today.getFullYear(), today.getMonth() - (totalPeriods - 1), 1);
+                getKey = (date) => date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+                getLabel = (date) => ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()] + ' ' + date.getFullYear().toString().slice(-2);
+            } else if (period === 'year') {
+                // Last 3 years
+                totalPeriods = 3;
+                timeWindowStart = new Date(today.getFullYear() - (totalPeriods - 1), 0, 1);
+                getKey = (date) => date.getFullYear().toString();
+                getLabel = (date) => date.getFullYear().toString();
+            } else {
+                 // Default back to month if an invalid period is passed
+                 return aggregateData(allTransactions, 'month');
+            }
+
+            // Ensure we start from the beginning of the day for timeWindowStart for accurate filtering
+            timeWindowStart.setHours(0, 0, 0, 0);
+
+
+            transactionsWithTimestamp.forEach(t => {
+                const date = new Date(t.timestamp.seconds * 1000);
+                
+                // Only aggregate transactions that fall within the specified time window
+                if (date >= timeWindowStart) {
+                    const key = getKey(date);
+                    const amount = Number(t.amount);
+                    const category = t.category || 'Uncategorized';
+
+                    if (t.type === 'expense') {
+                        periodExpenses.set(key, (periodExpenses.get(key) || 0) + amount);
+                        categoryExpenses.set(category, (categoryExpenses.get(category) || 0) + amount);
+                    } else if (t.type === 'income') {
+                        periodIncomes.set(key, (periodIncomes.get(key) || 0) + amount);
+                    }
+                }
+            });
+
+            const trendLabels = [];
+            const trendDataExpense = [];
+            const trendDataIncome = [];
+            const trendDataNetFlow = [];
+
+            // Dynamically generate the labels and fill data points for the entire period range
+            for (let i = 0; i < totalPeriods; i++) {
+                let d = new Date(timeWindowStart);
+                let key;
+                let label;
+                
+                if (period === 'day') {
+                    d.setDate(timeWindowStart.getDate() + i);
+                } else if (period === 'week') {
+                    d.setDate(timeWindowStart.getDate() + (i * 7));
+                } else if (period === 'month') {
+                    d.setMonth(timeWindowStart.getMonth() + i);
+                } else if (period === 'year') {
+                    d.setFullYear(timeWindowStart.getFullYear() + i);
+                }
+
+                key = getKey(d);
+                label = getLabel(d);
+
+                const expense = periodExpenses.get(key) || 0;
+                const income = periodIncomes.get(key) || 0;
+                
+                trendLabels.push(label);
+                trendDataExpense.push(expense);
+                trendDataIncome.push(income);
+                trendDataNetFlow.push(income - expense);
+            }
+
+            const breakdownLabels = Array.from(categoryExpenses.keys());
+            const breakdownData = Array.from(categoryExpenses.values());
+
+            return { trendLabels, trendDataExpense, trendDataIncome, trendDataNetFlow, breakdownLabels, breakdownData };
+        };
+
+        const chartColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280'];
+
+        const renderTrendChart = (data, viewMode) => {
+            if (trendChart) trendChart.destroy();
+
+            let datasets = [];
+            let chartTitleSuffix = '';
+            let yAxesTitle = 'Amount ($)';
+
+            if (viewMode === 'expense') {
+                datasets.push({
+                    label: 'Expenses', data: data.trendDataExpense, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.2)', borderWidth: 3, tension: 0.3, fill: true, pointRadius: 5
+                });
+                chartTitleSuffix = 'Expenses';
+            } else if (viewMode === 'income_expense') {
+                datasets.push({
+                    label: 'Income', data: data.trendDataIncome, borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.1)', borderWidth: 3, tension: 0.3, fill: false, pointRadius: 5
+                });
+                datasets.push({
+                    label: 'Expenses', data: data.trendDataExpense, borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)', borderWidth: 3, tension: 0.3, fill: false, pointRadius: 5
+                });
+                chartTitleSuffix = 'Income vs. Expense';
+            } else if (viewMode === 'net_flow') {
+                datasets.push({
+                    label: 'Net Flow (Income - Expense)', data: data.trendDataNetFlow, borderColor: '#3b82f6', 
+                    backgroundColor: ctx => {
+                        const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
+                        gradient.addColorStop(0, 'rgba(5, 150, 105, 0.3)');
+                        gradient.addColorStop(0.5, 'rgba(5, 150, 105, 0.1)');
+                        gradient.addColorStop(0.5, 'rgba(220, 38, 38, 0.1)');
+                        gradient.addColorStop(1, 'rgba(220, 38, 38, 0.3)');
+                        return gradient;
+                    },
+                    borderWidth: 3, tension: 0.3, fill: 'start',
+                    pointBackgroundColor: data.trendDataNetFlow.map(val => val >= 0 ? '#059669' : '#dc2626'), pointRadius: 5
+                });
+                chartTitleSuffix = 'Net Flow (Income - Expense)';
+                yAxesTitle = 'Net Balance ($)';
+            }
+            
+            const periodText = (currentPeriod) => {
+                if (currentPeriod === 'day') return 'Daily';
+                if (currentPeriod === 'week') return 'Weekly';
+                if (currentPeriod === 'month') return 'Monthly';
+                if (currentPeriod === 'year') return 'Yearly';
+                return 'Trend';
+            };
+            document.getElementById('trend-chart-title').textContent = `${periodText(currentPeriod)} ${chartTitleSuffix}`;
+
+            const trendCtx = document.getElementById('spendingTrendChart').getContext('2d');
+            trendChart = new Chart(trendCtx, {
+                type: 'line', data: { labels: data.trendLabels, datasets: datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: viewMode === 'income_expense', position: 'bottom' }, title: { display: false } },
+                    scales: { y: { beginAtZero: viewMode !== 'net_flow', title: { display: true, text: yAxesTitle } }, x: { grid: { display: false } } }
+                }
+            });
+        };
+
+        const renderCharts = (data) => {
+            const selectedView = document.querySelector('input[name="trendView"]:checked').value || 'expense';
+            renderTrendChart(data, selectedView);
+            
+            if (breakdownChart) breakdownChart.destroy();
+            const breakdownCtx = document.getElementById('categoryBreakdownChart').getContext('2d');
+            breakdownChart = new Chart(breakdownCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.breakdownLabels,
+                    datasets: [{
+                        data: data.breakdownData,
+                        backgroundColor: chartColors.slice(0, data.breakdownLabels.length),
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 6 } }, title: { display: false } }
+                }
+            });
+        };
+
+        const updateTrendChart = () => {
+            const selectedValue = document.querySelector('input[name="trendView"]:checked').value;
+            
+            ['expense', 'income_expense', 'net_flow'].forEach(val => {
+                const label = document.getElementById(`trend-${val}-label`);
+                if (!label) return; 
+                if (val === selectedValue) {
+                    label.classList.add('bg-blue-600', 'text-white');
+                    label.classList.remove('text-gray-700', 'hover:bg-white');
+                } else {
+                    label.classList.remove('bg-blue-600', 'text-white');
+                    label.classList.add('text-gray-700', 'hover:bg-white');
+                }
+            });
+
+            if (aggregatedData) { renderTrendChart(aggregatedData, selectedValue); }
+        };
+
+        const updateAnalyticsPeriod = (period) => {
+            currentPeriod = period;
+
+            ['day', 'week', 'month', 'year'].forEach(val => {
+                const label = document.getElementById(`period-${val}-label`);
+                if (!label) return; 
+                
+                if (val === period) {
+                    label.classList.add('bg-blue-600', 'text-white');
+                    label.classList.remove('hover:bg-white');
+                } else {
+                    label.classList.remove('bg-blue-600', 'text-white');
+                    label.classList.add('hover:bg-white');
+                }
+            });
+
+            if (transactions.length > 0) {
+                 aggregatedData = aggregateData(transactions, currentPeriod); 
+                 renderCharts(aggregatedData);
+            }
+        };
+
+
+        // --- LOCAL STORAGE LOGIC ---
+
+        const addTransaction = (transactionData) => {
+            const newId = Date.now().toString(); 
+            
+            let timestampSeconds;
+            if (transactionData.dateString) {
+                const selectedDate = new Date(transactionData.dateString);
+                // Set time to end of day if date is selected manually, to group correctly
+                selectedDate.setHours(23, 59, 59, 999); 
+                timestampSeconds = Math.floor(selectedDate.getTime() / 1000);
+            } else {
+                timestampSeconds = Math.floor(Date.now() / 1000);
+            }
+
+            const newTransaction = {
+                id: newId,
+                description: transactionData.description,
+                amount: Number(transactionData.amount),
+                type: transactionData.type,
+                category: transactionData.category,
+                timestamp: { seconds: timestampSeconds }
+            };
+            
+            transactions.push(newTransaction);
+            saveTransactions();
+            showMessage("Transaction added successfully!");
+        };
+
+        const deleteTransaction = (docId) => {
+            transactions = transactions.filter(t => t.id !== docId);
+            saveTransactions();
+            showMessage("Transaction deleted.");
+        };
+
+
+        // --- EVENT LISTENERS & MAIN EXECUTION ---
+
+        document.getElementById('transaction-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            // Get value from the radio button group
+            const type = document.querySelector('input[name="transactionType"]:checked').value; 
+            
+            const description = document.getElementById('description').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value);
+            const category = document.getElementById('category').value;
+            const dateString = document.getElementById('date').value;
+
+            if (description && !isNaN(amount) && amount > 0) {
+                const newTransaction = {
+                    description: description,
+                    amount: amount,
+                    type: type, // Use value from radio button
+                    category: category,
+                    dateString: dateString
+                };
+                addTransaction(newTransaction);
+
+                // Reset form inputs
+                document.getElementById('description').value = '';
+                document.getElementById('amount').value = '';
+                document.getElementById('category').value = 'Uncategorized';
+                document.getElementById('date').value = '';
+                
+                // Reset type selector to default (Expense)
+                document.querySelector('input[name="transactionType"][value="expense"]').checked = true;
+                updateTypeSelector(document.querySelector('input[name="transactionType"][value="expense"]'));
+
+            } else {
+                showMessage("Please enter valid description and amount (> 0).", 'error');
+            }
+        });
+
+
+        window.onload = function () {
+            // Initial styling for analytics selectors
+            // Set 'month' as active by default (it's checked in HTML)
+            updateAnalyticsPeriod('month');
+            document.getElementById('trend-expense-label').classList.add('bg-blue-600', 'text-white');
+            
+            // Initial styling for transaction type selector
+            document.querySelector('input[name="transactionType"][value="expense"]').checked = true;
+            updateTypeSelector(document.querySelector('input[name="transactionType"][value="expense"]'));
+
+            // Initial styling for navigation
+            document.getElementById('nav-dashboard').classList.add('nav-button-active');
+            document.getElementById('nav-analytics').classList.remove('nav-button-active');
+
+            showView('dashboard'); 
+            initLocalData();
+        }
+
+        // Expose functions globally for inline onclick handlers
+        window.showView = showView;
+        window.updateTrendChart = updateTrendChart;
+        window.updateAnalyticsPeriod = updateAnalyticsPeriod; 
+        window.updateTypeSelector = updateTypeSelector; // Expose the new function
+    </script>
+</body>
+</html>
