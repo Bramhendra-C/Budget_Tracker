@@ -850,11 +850,10 @@
 
             const trendCtx = document.getElementById('spendingTrendChart').getContext('2d');
             
-            // --- Custom Gradients for attractive fill ---
-            const expenseGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
-            // More vibrant gradient for 'trading' look
-            expenseGradient.addColorStop(0, 'rgba(37, 99, 235, 0.8)'); // More intense blue
-            expenseGradient.addColorStop(1, 'rgba(37, 99, 235, 0.1)'); // Fade to near transparency
+            // --- Simplified Blue Gradient for Expense/Net Flow Fill ---
+            const blueFillGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
+            blueFillGradient.addColorStop(0, 'rgba(37, 99, 235, 0.4)'); // Light translucent blue
+            blueFillGradient.addColorStop(1, 'rgba(37, 99, 235, 0.05)'); // Very faint blue
 
             let datasets = [];
             let chartTitleSuffix = '';
@@ -862,9 +861,10 @@
 
             // Define base properties for all line datasets
             const baseDatasetProps = {
-                borderWidth: 4, 
-                pointRadius: 6,
-                pointHoverRadius: 8,
+                borderWidth: 3, // Slightly thinner line than trading style
+                tension: 0.4,   // Smooth curve (removed stepped effect)
+                pointRadius: 4, // Smaller points for a cleaner look
+                pointHoverRadius: 6,
                 fill: true,
                 pointBackgroundColor: 'white', 
                 pointBorderWidth: 2
@@ -874,9 +874,8 @@
                 datasets.push({
                     label: 'Expenses', data: data.trendDataExpense, 
                     borderColor: '#3b82f6', // Brighter Blue for line
-                    backgroundColor: expenseGradient, // Use intense gradient for fill
+                    backgroundColor: blueFillGradient, // Use the simple gradient for fill
                     ...baseDatasetProps, 
-                    tension: 0.4, // Keep smooth
                     fill: 'start'
                 });
                 chartTitleSuffix = 'Expenses';
@@ -886,7 +885,7 @@
                     borderColor: '#059669', // Emerald Green
                     backgroundColor: 'rgba(5, 150, 105, 0.1)', 
                     ...baseDatasetProps, 
-                    tension: 0.4, // Keep smooth
+                    tension: 0.4, 
                     fill: false
                 });
                 datasets.push({
@@ -894,34 +893,21 @@
                     borderColor: '#dc2626', // Red
                     backgroundColor: 'rgba(220, 38, 38, 0.1)', 
                     ...baseDatasetProps, 
-                    tension: 0.4, // Keep smooth
+                    tension: 0.4, 
                     fill: false
                 });
                 chartTitleSuffix = 'Income vs. Expense';
             } else if (viewMode === 'net_flow') {
                 datasets.push({
                     label: 'Net Flow (Income - Expense)', data: data.trendDataNetFlow, 
-                    // Dynamic line color based on the individual segment value for a financial feel
-                    borderColor: ctx => {
-                        const value = ctx.parsed.y;
-                        if (value === null) return '#1e40af'; // Default color for null
-                        const previousValue = ctx.chart.data.datasets[0].data[ctx.dataIndex - 1];
-                        
-                        // Use color based on current value (Green=Positive, Red=Negative)
-                        return value >= 0 ? '#059669' : '#dc2626';
-                    }, 
-                    backgroundColor: ctx => {
-                        // Gradient fill based on the overall net flow for visual continuity
-                        const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
-                        gradient.addColorStop(0, 'rgba(37, 99, 235, 0.4)');
-                        gradient.addColorStop(1, 'rgba(37, 99, 235, 0.0)');
-                        return gradient;
-                    },
+                    // Use a single border color (blue) or dynamic based on sign
+                    borderColor: '#3b82f6', // Use a single blue line for simplicity (as in the sample image)
+                    backgroundColor: blueFillGradient,
                     ...baseDatasetProps, 
-                    tension: 0, // Set tension to 0 for stepped line (stock market look)
-                    stepped: 'after', // Key feature for trading/financial look
+                    tension: 0.4, // Smooth curve restored
+                    stepped: false, // Explicitly ensure line is smooth
                     fill: 'start',
-                    // Dynamic point colors (Green for surplus, Red for deficit)
+                    // Keep dynamic point colors for visual cue of surplus/deficit
                     pointBackgroundColor: data.trendDataNetFlow.map(val => val >= 0 ? '#059669' : '#dc2626'),
                     pointBorderColor: 'white'
                 });
