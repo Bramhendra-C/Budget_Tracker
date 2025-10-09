@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Chart.js for visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- Load Chart.js Data Labels Plugin for displaying percentages on the Doughnut chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         /* Custom styles for the app's visual appeal */
@@ -840,41 +842,71 @@
             return { trendLabels, trendDataExpense, trendDataIncome, trendDataNetFlow, breakdownLabels, breakdownData };
         };
 
-        const chartColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280'];
+        // Premium Color Palette
+        const chartColors = ['#2563eb', '#059669', '#f97316', '#ef4444', '#8b5cf6', '#06b6d4', '#4b5563', '#eab308'];
 
         const renderTrendChart = (data, viewMode) => {
             if (trendChart) trendChart.destroy();
+
+            const trendCtx = document.getElementById('spendingTrendChart').getContext('2d');
+            
+            // --- Custom Gradients for attractive fill ---
+            const expenseGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
+            expenseGradient.addColorStop(0, 'rgba(37, 99, 235, 0.6)'); // Blue top (blue-600)
+            expenseGradient.addColorStop(1, 'rgba(37, 99, 235, 0.0)'); // Transparent bottom
 
             let datasets = [];
             let chartTitleSuffix = '';
             let yAxesTitle = 'Amount ($)';
 
+            // Define base properties for all line datasets
+            const baseDatasetProps = {
+                borderWidth: 4, // Thicker line
+                tension: 0.4,   // Smoother curve
+                pointRadius: 6,
+                pointHoverRadius: 8,
+                fill: true,
+                pointBackgroundColor: 'white', // White points for contrast
+                pointBorderWidth: 2
+            };
+
             if (viewMode === 'expense') {
                 datasets.push({
-                    label: 'Expenses', data: data.trendDataExpense, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.2)', borderWidth: 3, tension: 0.3, fill: true, pointRadius: 5
+                    label: 'Expenses', data: data.trendDataExpense, 
+                    borderColor: '#1e40af', // Darker Blue for line
+                    backgroundColor: expenseGradient, // Use gradient for fill
+                    ...baseDatasetProps, fill: 'start'
                 });
                 chartTitleSuffix = 'Expenses';
             } else if (viewMode === 'income_expense') {
                 datasets.push({
-                    label: 'Income', data: data.trendDataIncome, borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.1)', borderWidth: 3, tension: 0.3, fill: false, pointRadius: 5
+                    label: 'Income', data: data.trendDataIncome, 
+                    borderColor: '#059669', // Emerald Green
+                    backgroundColor: 'rgba(5, 150, 105, 0.1)', // Light fill
+                    ...baseDatasetProps, fill: false
                 });
                 datasets.push({
-                    label: 'Expenses', data: data.trendDataExpense, borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)', borderWidth: 3, tension: 0.3, fill: false, pointRadius: 5
+                    label: 'Expenses', data: data.trendDataExpense, 
+                    borderColor: '#dc2626', // Red
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)', // Light fill
+                    ...baseDatasetProps, fill: false
                 });
                 chartTitleSuffix = 'Income vs. Expense';
             } else if (viewMode === 'net_flow') {
                 datasets.push({
-                    label: 'Net Flow (Income - Expense)', data: data.trendDataNetFlow, borderColor: '#3b82f6', 
+                    label: 'Net Flow (Income - Expense)', data: data.trendDataNetFlow, 
+                    borderColor: data.trendDataNetFlow.map(val => val >= 0 ? '#059669' : '#dc2626'), // Dynamic line color
                     backgroundColor: ctx => {
+                        // Gradient fill based on the overall net flow for visual continuity
                         const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
-                        gradient.addColorStop(0, 'rgba(5, 150, 105, 0.3)');
-                        gradient.addColorStop(0.5, 'rgba(5, 150, 105, 0.1)');
-                        gradient.addColorStop(0.5, 'rgba(220, 38, 38, 0.1)');
-                        gradient.addColorStop(1, 'rgba(220, 38, 38, 0.3)');
+                        gradient.addColorStop(0, 'rgba(37, 99, 235, 0.4)');
+                        gradient.addColorStop(1, 'rgba(37, 99, 235, 0.0)');
                         return gradient;
                     },
-                    borderWidth: 3, tension: 0.3, fill: 'start',
-                    pointBackgroundColor: data.trendDataNetFlow.map(val => val >= 0 ? '#059669' : '#dc2626'), pointRadius: 5
+                    ...baseDatasetProps, fill: 'start',
+                    // Dynamic point colors (Green for surplus, Red for deficit)
+                    pointBackgroundColor: data.trendDataNetFlow.map(val => val >= 0 ? '#059669' : '#dc2626'),
+                    pointBorderColor: 'white'
                 });
                 chartTitleSuffix = 'Net Flow (Income - Expense)';
                 yAxesTitle = 'Net Balance ($)';
@@ -889,13 +921,47 @@
             };
             document.getElementById('trend-chart-title').textContent = `${periodText(currentPeriod)} ${chartTitleSuffix}`;
 
-            const trendCtx = document.getElementById('spendingTrendChart').getContext('2d');
             trendChart = new Chart(trendCtx, {
                 type: 'line', data: { labels: data.trendLabels, datasets: datasets },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: viewMode === 'income_expense', position: 'bottom' }, title: { display: false } },
-                    scales: { y: { beginAtZero: viewMode !== 'net_flow', title: { display: true, text: yAxesTitle } }, x: { grid: { display: false } } }
+                    plugins: { 
+                        legend: { 
+                            display: viewMode === 'income_expense', 
+                            position: 'bottom',
+                            labels: { usePointStyle: true, boxWidth: 6, color: '#374151' } // Darker text for readability
+                        }, 
+                        title: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(31, 41, 55, 0.9)', // Dark background for tooltips
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 14 },
+                            cornerRadius: 6,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    // Use the global formatCurrency helper
+                                    label += formatCurrency(context.parsed.y);
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: { 
+                        y: { 
+                            beginAtZero: viewMode !== 'net_flow', 
+                            title: { display: true, text: yAxesTitle, color: '#4b5563' }, // Gray title
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                        }, 
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#4b5563' }
+                        } 
+                    }
                 }
             });
         };
@@ -905,6 +971,37 @@
             renderTrendChart(data, selectedView);
             
             if (breakdownChart) breakdownChart.destroy();
+
+            const totalExpense = data.breakdownData.reduce((sum, val) => sum + val, 0);
+
+            // --- Doughnut Chart Center Text Plugin (Improved Visualization) ---
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw: (chart) => {
+                    if (totalExpense === 0) return; 
+
+                    const { ctx, width, height } = chart;
+                    ctx.save();
+                    const centerX = width / 2;
+                    const centerY = height / 2;
+                    const totalFormatted = formatCurrency(totalExpense);
+
+                    // 1. Draw Total Label
+                    ctx.font = 'bold 0.8rem Inter';
+                    ctx.fillStyle = '#6b7280'; // gray-500
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('Total Expense', centerX, centerY - 15);
+
+                    // 2. Draw Amount
+                    ctx.font = 'bold 1.8rem Inter';
+                    ctx.fillStyle = '#1f2937'; // gray-800
+                    ctx.fillText(totalFormatted, centerX, centerY + 15);
+
+                    ctx.restore();
+                }
+            };
+            
             const breakdownCtx = document.getElementById('categoryBreakdownChart').getContext('2d');
             breakdownChart = new Chart(breakdownCtx, {
                 type: 'doughnut',
@@ -913,13 +1010,45 @@
                     datasets: [{
                         data: data.breakdownData,
                         backgroundColor: chartColors.slice(0, data.breakdownLabels.length),
-                        hoverOffset: 10
+                        hoverOffset: 10,
+                        borderWidth: 5, // Thicker segment borders
+                        borderColor: 'white'
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 6 } }, title: { display: false } }
-                }
+                    cutout: '70%', // Make the hole larger
+                    plugins: { 
+                        legend: { 
+                            position: 'right', 
+                            labels: { usePointStyle: true, boxWidth: 8, padding: 15, color: '#374151' } 
+                        }, 
+                        title: { display: false },
+                        // Data Labels Plugin Configuration
+                        datalabels: {
+                            formatter: (value, context) => {
+                                if (totalExpense === 0) return '';
+                                const percentage = Math.round((value / totalExpense) * 100);
+                                return percentage > 5 ? percentage + '%' : ''; // Only show labels for segments > 5%
+                            },
+                            color: '#fff',
+                            font: { weight: 'bold', size: 14 },
+                            textShadowBlur: 4,
+                            textShadowColor: 'rgba(0, 0, 0, 0.5)'
+                        },
+                         tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                    const value = context.parsed;
+                                    const percentage = total === 0 ? 0 : Math.round((value / total) * 100);
+                                    return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels, centerTextPlugin] // Register both plugins
             });
         };
 
