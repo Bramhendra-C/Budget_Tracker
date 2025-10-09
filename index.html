@@ -54,7 +54,7 @@
         }
         
         /* Input & Select Styling for dropdown indicator */
-        select#category, input[type="date"] {
+        select#category, input[type="date"], select#category-filter {
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
@@ -315,6 +315,17 @@
                     <h2 class="text-xl font-extrabold text-gray-800">View All</h2>
                     <div class="w-8"></div> <!-- Spacer for alignment -->
                 </header>
+                
+                <!-- NEW: Filter Dropdown -->
+                <div class="p-4 pt-0 mb-4">
+                    <label for="category-filter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Category:</label>
+                    <select id="category-filter" onchange="renderAllTransactions()"
+                            class="block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        <!-- Options populated dynamically by JS in init -->
+                    </select>
+                </div>
+                <!-- END NEW FILTER -->
+
                 <div id="grouped-transaction-list" class="space-y-6">
                     <!-- Grouped transactions will be rendered here -->
                 </div>
@@ -351,6 +362,12 @@
         
         // Key for storing data in the browser's local storage
         const STORAGE_KEY = 'budgetTrackerTransactions'; 
+
+        // List of all possible categories (used to populate the filter)
+        const ALL_CATEGORIES = [
+            'Uncategorized', 'Food', 'Transportation', 'Housing', 'Entertainment',
+            'Shopping', 'Utilities', 'Salary (Income)', 'Other'
+        ];
 
         /**
          * Converts a number to a currency string format.
@@ -436,7 +453,34 @@
             document.getElementById('loading-message')?.remove();
             loadTransactions();
             saveTransactions(); // Initial rendering
+            populateCategoryFilter(); // NEW: Populate the filter options
         };
+
+        /**
+         * Populates the category filter dropdown in the full list view.
+         */
+        const populateCategoryFilter = () => {
+            const filterElement = document.getElementById('category-filter');
+            if (!filterElement) return;
+
+            // Clear existing options
+            filterElement.innerHTML = '';
+
+            // Add the default 'All Categories' option
+            let optionAll = document.createElement('option');
+            optionAll.value = 'All';
+            optionAll.textContent = 'All Categories';
+            filterElement.appendChild(optionAll);
+
+            // Add all other predefined categories
+            ALL_CATEGORIES.forEach(category => {
+                let option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                filterElement.appendChild(option);
+            });
+        };
+
 
         /**
          * Switches the active view (Dashboard, Analytics, or List) and updates the navigation bar state.
@@ -467,6 +511,7 @@
             } else if (viewName === 'list') {
                 document.getElementById('full-list-view').classList.remove('hidden');
                 // Ensure no nav button is active when on the list view (as it's a sub-page of dashboard)
+                renderAllTransactions(); // Rerender list when view is shown
             }
         };
         
@@ -660,23 +705,30 @@
             const listElement = document.getElementById('grouped-transaction-list');
             listElement.innerHTML = '';
 
-            // FILTER: Use a filtered array to ensure stability
-            const validTransactions = transactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
+            // Get selected category filter
+            const filterElement = document.getElementById('category-filter');
+            const selectedCategory = filterElement ? filterElement.value : 'All';
+
+            // 1. Filter transactions based on selection
+            let filteredTransactions = transactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
             
-            if (validTransactions.length === 0) {
-                listElement.innerHTML = '<p class="text-center text-gray-500 p-8">No transactions recorded.</p>';
+            if (selectedCategory !== 'All') {
+                filteredTransactions = filteredTransactions.filter(t => t.category === selectedCategory);
+            }
+            
+            if (filteredTransactions.length === 0) {
+                listElement.innerHTML = `<p class="text-center text-gray-500 p-8">No transactions found for category: ${selectedCategory}.</p>`;
                 return;
             }
 
-            // Sort only valid transactions (most recent first)
-            const sortedTransactions = [...validTransactions].sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
-            const monthlyNetFlows = calculateMonthlyNetFlow(validTransactions); // For monthly summary
-            const dailyNetFlows = calculateDailyNetFlow(validTransactions); // For daily summary
+            // 2. Sort, calculate flows, and group
+            const sortedTransactions = [...filteredTransactions].sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+            const monthlyNetFlows = calculateMonthlyNetFlow(filteredTransactions); // Calculate flow based on FILTERED transactions
+            const dailyNetFlows = calculateDailyNetFlow(filteredTransactions); // Calculate flow based on FILTERED transactions
 
             let lastMonthKey = null;
-            let lastDateKey = null; // Track the last rendered day key
 
-            // 1. Group transactions by day (and maintain insertion order)
+            // Group transactions by day (and maintain insertion order)
             const groupedByDateKey = sortedTransactions.reduce((acc, t) => {
                 const dateKey = formatDateKey(t.timestamp.seconds * 1000, true); 
                 if (!acc[dateKey]) acc[dateKey] = [];
@@ -685,14 +737,14 @@
             }, {});
 
             
-            // 2. Render groups and insert monthly/daily summaries
+            // 3. Render groups and insert monthly/daily summaries
             for (const dateKey in groupedByDateKey) {
                 const dayGroup = groupedByDateKey[dateKey];
                 const firstTransactionDate = new Date(dayGroup[0].timestamp.seconds * 1000);
                 const currentMonthKey = firstTransactionDate.getFullYear() + '-' + String(firstTransactionDate.getMonth() + 1).padStart(2, '0');
 
                 // --- MONTHLY SUMMARY CHECK ---
-                // Only render if the month has changed (and not the first group overall)
+                // Only render if the month has changed 
                 if (lastMonthKey !== currentMonthKey) {
                     const netFlow = monthlyNetFlows.get(currentMonthKey) || 0;
                     const isSurplus = netFlow >= 0;
@@ -703,6 +755,8 @@
 
                     const monthHeader = document.createElement('div');
                     monthHeader.className = 'py-3 px-4 bg-blue-50/70 border-b border-blue-200 shadow-inner mb-2 flex justify-between items-center mt-6 rounded-xl';
+                    
+                    // Show flow amount for the filter context
                     monthHeader.innerHTML = `
                         <h4 class="text-base font-bold text-gray-800">Monthly Net Flow (${monthName})</h4>
                         <div class="text-right">
@@ -722,6 +776,8 @@
 
                 const dailyHeader = document.createElement('div');
                 dailyHeader.className = 'py-2 px-4 bg-gray-100/70 rounded-lg flex justify-between items-center mt-3 border-l-4 border-gray-300';
+                
+                // Show flow amount for the filter context
                 dailyHeader.innerHTML = `
                     <h4 class="text-sm font-bold text-gray-800">${dateDisplay}</h4>
                     <div class="text-right">
@@ -742,7 +798,6 @@
                 });
 
                 listElement.appendChild(groupContainer);
-                lastDateKey = dateKey;
             }
         };
 
