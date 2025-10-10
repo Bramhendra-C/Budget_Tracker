@@ -43,7 +43,7 @@
         }
 
         /* Balance text with subtle white glow */
-        #balance {
+        .balance-glow {
             text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
         }
 
@@ -69,7 +69,7 @@
         }
 
         /* Input & Select Styling for dropdown indicator */
-        select#category, input[type="date"], select#category-filter {
+        select#category, input[type="date"], select#category-filter, input[type="time"] {
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
@@ -163,7 +163,8 @@
                     <div class="flex justify-between items-center text-indigo-200 mb-2">
                         <h3 class="text-lg font-semibold">Current Net Balance</h3>
                     </div>
-                    <p id="balance" class="text-6xl font-extrabold text-white">$0.00</p>
+                    <!-- Balance text color is now controlled by JS -->
+                    <p id="balance" class="text-6xl font-extrabold balance-glow">$0.00</p>
                 </div>
 
                 <!-- Income and Expense Chips -->
@@ -226,29 +227,35 @@
                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
                             </div>
                             
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-3 gap-4">
                                 <!-- Date (Now defaults to today) -->
-                                <div>
+                                <div class="col-span-2">
                                     <label for="date" class="block text-sm font-medium text-gray-700">Date (Optional)</label>
                                     <input type="date" id="date" 
                                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
                                 </div>
-                                <!-- Category -->
+                                <!-- Time (NEW FIELD) -->
                                 <div>
-                                    <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
-                                    <select id="category"
-                                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
-                                        <option value="Uncategorized">Uncategorized</option>
-                                        <option value="Food">Food</option>
-                                        <option value="Transportation">Transportation</option>
-                                        <option value="Housing">Housing</option>
-                                        <option value="Entertainment">Entertainment</option>
-                                        <option value="Shopping">Shopping</option>
-                                        <option value="Utilities">Utilities</option>
-                                        <option value="Salary (Income)">Salary (Income)</option>
-                                        <option value="Other">Other</option>
-                                    </select>
+                                    <label for="time" class="block text-sm font-medium text-gray-700">Time</label>
+                                    <input type="time" id="time" 
+                                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
                                 </div>
+                            </div>
+                            <!-- Category -->
+                            <div>
+                                <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                                <select id="category"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                    <option value="Uncategorized">Uncategorized</option>
+                                    <option value="Food">Food</option>
+                                    <option value="Transportation">Transportation</option>
+                                    <option value="Housing">Housing</option>
+                                    <option value="Entertainment">Entertainment</option>
+                                    <option value="Shopping">Shopping</option>
+                                    <option value="Utilities">Utilities</option>
+                                    <option value="Salary (Income)">Salary (Income)</option>
+                                    <option value="Other">Other</option>
+                                </select>
                             </div>
                         </div>
                         
@@ -493,6 +500,9 @@
             const dd = String(today.getDate()).padStart(2, '0');
             document.getElementById('date').value = `${yyyy}-${mm}-${dd}`; // Sets the date to today
             
+            // Time input is left blank to allow user to set it, but we don't default it.
+            document.getElementById('time').value = '';
+
             saveTransactions(); // Initial rendering
             populateCategoryFilter(); // Populate the filter options
         };
@@ -601,10 +611,24 @@
             });
 
             const balance = totalIncome - totalExpense;
+            const balanceElement = document.getElementById('balance');
+            
+            // --- NEW BALANCE COLOR LOGIC ---
+            if (balance < 0) {
+                // Negative Balance: Red color (lighter red for visibility on dark gradient)
+                balanceElement.classList.remove('text-white');
+                balanceElement.classList.add('text-red-300');
+                balanceElement.classList.remove('balance-glow');
+            } else {
+                // Positive or Zero Balance: White color with glow
+                balanceElement.classList.remove('text-red-300');
+                balanceElement.classList.add('text-white');
+                balanceElement.classList.add('balance-glow');
+            }
+            // --- END NEW BALANCE COLOR LOGIC ---
 
             // Update DOM elements for new Dashboard style
-            document.getElementById('balance').textContent = formatCurrency(balance);
-            // Balance color stays white on the gradient background
+            balanceElement.textContent = formatCurrency(balance);
             document.getElementById('income').textContent = formatCurrency(totalIncome);
             document.getElementById('expense').textContent = formatCurrency(totalExpense);
         };
@@ -1188,8 +1212,7 @@
             document.getElementById('breakdown-total').textContent = formatCurrency(totalExpense);
 
 
-            // --- Doughnut Chart Center Text Plugin (REMOVED) ---
-            // Removing the centerTextPlugin definition entirely
+            // --- Doughnut Chart Center Text Plugin is REMOVED ---
 
             
             const breakdownCtx = document.getElementById('categoryBreakdownChart').getContext('2d');
@@ -1289,14 +1312,29 @@
             const newId = Date.now().toString(); 
             
             let timestampSeconds;
-            if (transactionData.dateString) {
-                const selectedDate = new Date(transactionData.dateString);
-                // Set time to end of day if date is selected manually, to group correctly
-                selectedDate.setHours(23, 59, 59, 999); 
-                timestampSeconds = Math.floor(selectedDate.getTime() / 1000);
-            } else {
-                timestampSeconds = Math.floor(Date.now() / 1000);
+            
+            const dateString = document.getElementById('date').value;
+            const timeString = document.getElementById('time').value;
+            const now = new Date(); // Use current date/time as fallback
+
+            // 1. Determine the Base Date (YYYY-MM-DD)
+            let baseDate = now;
+            if (dateString) {
+                // If date is provided, start building the timestamp from midnight of that date
+                baseDate = new Date(dateString);
             }
+            // If time is provided, use the baseDate and apply the time
+            if (timeString) {
+                const [hours, minutes] = timeString.split(':').map(Number);
+                baseDate.setHours(hours, minutes, 0, 0);
+            } else if (dateString && !timeString) {
+                // If ONLY date is provided, use the time from when the app loaded (now)
+                // This ensures sorting works correctly within a manually set date
+                baseDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+            }
+
+            // Fallback: If both are empty, baseDate remains 'now'
+            timestampSeconds = Math.floor(baseDate.getTime() / 1000);
 
             const newTransaction = {
                 id: newId,
@@ -1331,6 +1369,7 @@
             const amount = parseFloat(document.getElementById('amount').value);
             const category = document.getElementById('category').value;
             const dateString = document.getElementById('date').value;
+            const timeString = document.getElementById('time').value; // Get the new time value
 
             if (description && !isNaN(amount) && amount > 0) {
                 const newTransaction = {
@@ -1338,7 +1377,8 @@
                     amount: amount,
                     type: type, // Use value from radio button
                     category: category,
-                    dateString: dateString
+                    dateString: dateString,
+                    timeString: timeString // Pass time string to addTransaction
                 };
                 addTransaction(newTransaction);
 
@@ -1353,7 +1393,8 @@
                 const mm = String(today.getMonth() + 1).padStart(2, '0');
                 const dd = String(today.getDate()).padStart(2, '0');
                 document.getElementById('date').value = `${yyyy}-${mm}-${dd}`;
-                
+                document.getElementById('time').value = ''; // Clear time input
+
                 // Reset type selector to default (Expense)
                 document.querySelector('input[name="transactionType"][value="expense"]').checked = true;
                 updateTypeSelector(document.querySelector('input[name="transactionType"][value="expense"]'));
