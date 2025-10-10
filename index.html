@@ -25,7 +25,7 @@
             min-height: 100vh;
             background-color: white; 
             padding-bottom: 72px; /* Space for fixed bottom navigation */
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.2); /* Enhanced shadow */
             overflow-y: auto;
             overflow-x: hidden;
             position: relative;
@@ -38,21 +38,36 @@
         .main-balance-card {
             background-image: linear-gradient(to right bottom, #2563eb, #4f46e5); /* blue-600 to indigo-600 */
             color: white;
-            box-shadow: 0 15px 30px -5px rgba(37, 99, 235, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 18px 40px -8px rgba(37, 99, 235, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.15); /* Stronger blue shadow */
             border-radius: 1.5rem; 
+        }
+
+        /* Balance text with subtle white glow */
+        #balance {
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
         }
 
         .primary-card {
             background-color: white;
-            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08); /* Enhanced card shadow */
             border-radius: 1.5rem; /* rounded-3xl */
         }
         .small-card {
             background-color: white;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.1);
             border-radius: 0.75rem; /* rounded-xl */
         }
         
+        /* Sticky Header with Blur Effect */
+        .sticky-header {
+            background-color: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
         /* Input & Select Styling for dropdown indicator */
         select#category, input[type="date"], select#category-filter {
             -webkit-appearance: none;
@@ -71,7 +86,18 @@
         .trend-selector input:checked + span {
             background-color: #1d4ed8; 
             color: white;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(29, 78, 216, 0.4);
+        }
+        .trend-selector span {
+            transition: all 0.2s ease-in-out;
+        }
+
+        /* Chart View Selectors */
+        .view-selector-group {
+            border-radius: 1rem;
+            padding: 0.5rem;
+            background-color: #f3f4f6;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         /* Message Box Styling */
@@ -102,6 +128,12 @@
             -webkit-appearance: none;
             margin: 0;
         }
+
+        /* Transaction List Styling for cleaner look */
+        .transaction-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
         
     </style>
 </head>
@@ -114,7 +146,7 @@
     <!-- Main Application Frame (Simulates Mobile Screen) -->
     <div class="app-frame relative overflow-hidden">
         
-        <header class="p-6 pb-2 sticky top-0 z-10 bg-white">
+        <header class="p-6 pb-2 sticky-header">
             <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">
                 The Ledger
             </h1>
@@ -127,7 +159,7 @@
             <!-- DASHBOARD VIEW -->
             <div id="dashboard-view">
                 <!-- Main Dashboard Card (Current Balance) -->
-                <div class="main-balance-card p-6 mb-6 shadow-xl">
+                <div class="main-balance-card p-6 mb-6">
                     <div class="flex justify-between items-center text-indigo-200 mb-2">
                         <h3 class="text-lg font-semibold">Current Net Balance</h3>
                     </div>
@@ -248,8 +280,8 @@
                 <div class="primary-card p-6 mb-6">
                     <h2 id="trend-chart-title" class="text-xl font-bold text-gray-800 mb-4">Monthly Spending Trends</h2>
                     
-                    <!-- Time Period Selector -->
-                    <div class="grid grid-cols-4 gap-2 p-1 bg-gray-100 rounded-xl mb-6 justify-center text-gray-700 font-semibold">
+                    <!-- Time Period Selector (Clean Box) -->
+                    <div class="grid grid-cols-4 gap-2 view-selector-group mb-6 justify-center text-gray-700 font-semibold">
                         <label class="flex-1 trend-selector">
                             <input type="radio" name="timePeriod" value="day" class="hidden" onchange="updateAnalyticsPeriod('day')">
                             <span id="period-day-label" class="block text-center py-2 px-1 text-xs rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white text-gray-700">Day</span>
@@ -268,9 +300,9 @@
                         </label>
                     </div>
 
-                    <!-- Trend View Selector -->
-                    <div class="flex space-x-2 p-1 bg-gray-100 rounded-xl mb-6 justify-center trend-selector">
-                        <label class="flex-1">
+                    <!-- Trend View Selector (Clean Box) -->
+                    <div class="flex space-x-2 view-selector-group mb-6 justify-center">
+                        <label class="flex-1 trend-selector">
                             <input type="radio" name="trendView" value="expense" checked class="hidden" onchange="updateTrendChart()">
                             <span id="trend-expense-label" class="block text-center py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors duration-200 bg-blue-600 text-white">Expense Only</span>
                         </label>
@@ -295,19 +327,19 @@
                     <div class="h-80 w-full flex justify-center">
                          <canvas id="categoryBreakdownChart" class="max-h-80"></canvas>
                     </div>
-                    <!-- NEW: Total Expense Display below the chart -->
+                    <!-- Total Expense Display below the chart -->
                     <div class="mt-6 pt-4 border-t border-gray-100 text-center">
                         <p class="text-base font-semibold text-gray-600">Total Expenses Analyzed</p>
                         <p id="breakdown-total" class="text-3xl font-extrabold text-red-600 mt-1">$0.00</p>
                     </div>
-                    <!-- END NEW TOTAL -->
+                    <!-- END TOTAL -->
                 </div>
             </div>
             <!-- END ANALYTICS VIEW -->
 
             <!-- FULL TRANSACTION LIST VIEW (New View) -->
             <div id="full-list-view" class="hidden">
-                <header class="flex items-center justify-between p-4 sticky top-0 bg-white border-b z-10 -mx-4 -mt-4 mb-4">
+                <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
                     <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
                         <!-- Back Arrow -->
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -316,7 +348,7 @@
                     <div class="w-8"></div> <!-- Spacer for alignment -->
                 </header>
                 
-                <!-- NEW: Filter Dropdown -->
+                <!-- Filter Dropdown -->
                 <div class="p-4 pt-0 mb-4">
                     <label for="category-filter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Category:</label>
                     <select id="category-filter" onchange="renderAllTransactions()"
@@ -335,8 +367,9 @@
         </div>
     </div>
 
-    <!-- Fixed Bottom Navigation Bar -->
-    <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 max-w-[450px] mx-auto bg-white border-t border-gray-200 shadow-2xl z-20 h-16 rounded-t-2xl flex justify-around items-center">
+    <!-- Fixed Bottom Navigation Bar (Sticky with Blur) -->
+    <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 max-w-[450px] mx-auto bg-white/90 border-t border-gray-200 shadow-2xl z-20 h-16 rounded-t-2xl flex justify-around items-center"
+         style="backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
         <!-- Dashboard Button -->
         <button id="nav-dashboard" onclick="showView('dashboard')" class="flex flex-col items-center nav-button-active focus:outline-none transition-colors duration-200">
             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"></path></svg>
@@ -853,7 +886,7 @@
             const category = t.category || 'N/A';
 
             const listItem = document.createElement('div');
-            listItem.className = `flex justify-between items-center ${isFullList ? 'py-2' : 'p-3'} hover:bg-gray-50 rounded-lg transition duration-100 ease-in-out`;
+            listItem.className = `transaction-item flex justify-between items-center ${isFullList ? 'py-2' : 'p-3'} hover:bg-gray-50 rounded-lg transition duration-100 ease-in-out`;
             listItem.dataset.docId = t.id;
 
             listItem.innerHTML = `
@@ -1025,7 +1058,7 @@
 
             const trendCtx = document.getElementById('spendingTrendChart').getContext('2d');
             
-            // --- Simplified Blue Gradient for Expense/Net Flow Fill ---
+            // --- Clean Blue Gradient for Expense/Net Flow Fill ---
             const blueFillGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
             blueFillGradient.addColorStop(0, 'rgba(37, 99, 235, 0.4)'); // Light translucent blue
             blueFillGradient.addColorStop(1, 'rgba(37, 99, 235, 0.05)'); // Very faint blue
@@ -1155,8 +1188,7 @@
             document.getElementById('breakdown-total').textContent = formatCurrency(totalExpense);
 
 
-            // --- Doughnut Chart Center Text Plugin (Improved Visualization) ---
-            // NOTE: The center text plugin is now decorative since the total is displayed below.
+            // --- Doughnut Chart Center Text Plugin (Restored and Improved) ---
             const centerTextPlugin = {
                 id: 'centerText',
                 beforeDraw: (chart) => {
@@ -1167,13 +1199,18 @@
                     const centerX = width / 2;
                     const centerY = height / 2;
                     
-                    // You can keep a simple label or remove this plugin if you only want the bottom label.
-                    // Keeping the center text minimal for a clean look.
-                    ctx.font = 'bold 1.1rem Inter';
-                    ctx.fillStyle = '#1f2937'; // gray-800
+                    // Total Expense Value
+                    ctx.font = 'bold 2rem Inter';
+                    ctx.fillStyle = '#dc2626'; // Red-600
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText('Breakdown', centerX, centerY);
+                    ctx.fillText(formatCurrency(totalExpense), centerX, centerY - 10);
+                    
+                    // Label
+                    ctx.font = 'bold 0.8rem Inter';
+                    ctx.fillStyle = '#6b7280'; // gray-500
+                    ctx.fillText('Total Expenses', centerX, centerY + 25);
+
 
                     ctx.restore();
                 }
@@ -1334,7 +1371,7 @@
                 document.getElementById('amount').value = '';
                 document.getElementById('category').value = 'Uncategorized';
                 
-                // Reset date to today's date after submission (FIXED in init, but reset here too)
+                // Reset date to today's date after submission
                 const today = new Date();
                 const yyyy = today.getFullYear();
                 const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -1374,7 +1411,7 @@
         window.updateTrendChart = updateTrendChart;
         window.updateAnalyticsPeriod = updateAnalyticsPeriod; 
         window.updateTypeSelector = updateTypeSelector; // Expose the new function
-        window.renderAllTransactions = renderAllTransactions; // FIX: Expose the filter function globally
+        window.renderAllTransactions = renderAllTransactions; // Expose the filter function globally
     </script>
 </body>
 </html>
