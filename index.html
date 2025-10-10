@@ -1339,6 +1339,8 @@
             ['expense', 'income_expense', 'net_flow'].forEach(val => {
                 const label = document.getElementById(`trend-${val}-label`);
                 if (!label) return; 
+                
+                // --- FIX APPLIED HERE: Ensure correct class toggling ---
                 if (val === selectedValue) {
                     label.classList.add('bg-blue-600', 'text-white');
                     label.classList.remove('text-gray-700', 'hover:bg-white');
@@ -1346,6 +1348,7 @@
                     label.classList.remove('bg-blue-600', 'text-white');
                     label.classList.add('text-gray-700', 'hover:bg-white');
                 }
+                // --- END FIX ---
             });
 
             if (aggregatedData) { renderTrendChart(aggregatedData, selectedValue); }
@@ -1354,6 +1357,7 @@
         const updateAnalyticsPeriod = (period) => {
             currentPeriod = period;
 
+            // 1. Update the time period buttons' visual state
             ['day', 'week', 'month', 'year'].forEach(val => {
                 const label = document.getElementById(`period-${val}-label`);
                 if (!label) return; 
@@ -1367,6 +1371,20 @@
                 }
             });
 
+            // 2. Reset the trend view to 'Expense Only' and update its visuals
+            // Get the Expense Only radio button
+            const expenseRadio = document.querySelector('input[name="trendView"][value="expense"]');
+            
+            if (expenseRadio) {
+                // Check the Expense Only radio button
+                expenseRadio.checked = true;
+                
+                // Manually trigger the trend chart update to ensure the charts reflect the new period
+                // AND to visually update the Income + Expense / Net Flow selectors to the default 'Expense Only' blue state.
+                updateTrendChart(); 
+            }
+
+            // 3. Process new data
             if (transactions.length > 0) {
                  aggregatedData = aggregateData(transactions, currentPeriod); 
                  renderCharts(aggregatedData);
@@ -1476,8 +1494,8 @@
         window.onload = function () {
             // Initial styling for analytics selectors
             // Set 'month' as active by default (it's checked in HTML)
+            // This now calls updateAnalyticsPeriod which handles both time and trend selector visuals
             updateAnalyticsPeriod('month');
-            document.getElementById('trend-expense-label').classList.add('bg-blue-600', 'text-white');
             
             // Initial styling for transaction type selector
             document.querySelector('input[name="transactionType"][value="expense"]').checked = true;
