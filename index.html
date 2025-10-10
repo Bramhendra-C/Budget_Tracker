@@ -195,7 +195,7 @@
                             </div>
                             
                             <div class="grid grid-cols-2 gap-4">
-                                <!-- Date -->
+                                <!-- Date (Now defaults to today) -->
                                 <div>
                                     <label for="date" class="block text-sm font-medium text-gray-700">Date (Optional)</label>
                                     <input type="date" id="date" 
@@ -452,8 +452,16 @@
         const initLocalData = () => {
             document.getElementById('loading-message')?.remove();
             loadTransactions();
+            
+            // Set today's date as the default for the Quick Add form
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months start at 0
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('date').value = `${yyyy}-${mm}-${dd}`; // Sets the date to today
+            
             saveTransactions(); // Initial rendering
-            populateCategoryFilter(); // NEW: Populate the filter options
+            populateCategoryFilter(); // Populate the filter options
         };
 
         /**
@@ -707,12 +715,14 @@
 
             // Get selected category filter
             const filterElement = document.getElementById('category-filter');
+            // Default to 'All' if element isn't found or value is null
             const selectedCategory = filterElement ? filterElement.value : 'All';
 
             // 1. Filter transactions based on selection
             let filteredTransactions = transactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
             
             if (selectedCategory !== 'All') {
+                // FIX: Filter strictly by category
                 filteredTransactions = filteredTransactions.filter(t => t.category === selectedCategory);
             }
             
@@ -723,8 +733,9 @@
 
             // 2. Sort, calculate flows, and group
             const sortedTransactions = [...filteredTransactions].sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
-            const monthlyNetFlows = calculateMonthlyNetFlow(filteredTransactions); // Calculate flow based on FILTERED transactions
-            const dailyNetFlows = calculateDailyNetFlow(filteredTransactions); // Calculate flow based on FILTERED transactions
+            // Calculate flow based on FILTERED transactions
+            const monthlyNetFlows = calculateMonthlyNetFlow(filteredTransactions); 
+            const dailyNetFlows = calculateDailyNetFlow(filteredTransactions); 
 
             let lastMonthKey = null;
 
@@ -1322,7 +1333,13 @@
                 document.getElementById('description').value = '';
                 document.getElementById('amount').value = '';
                 document.getElementById('category').value = 'Uncategorized';
-                document.getElementById('date').value = '';
+                
+                // Reset date to today's date after submission (FIXED in init, but reset here too)
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                document.getElementById('date').value = `${yyyy}-${mm}-${dd}`;
                 
                 // Reset type selector to default (Expense)
                 document.querySelector('input[name="transactionType"][value="expense"]').checked = true;
@@ -1357,6 +1374,7 @@
         window.updateTrendChart = updateTrendChart;
         window.updateAnalyticsPeriod = updateAnalyticsPeriod; 
         window.updateTypeSelector = updateTypeSelector; // Expose the new function
+        window.renderAllTransactions = renderAllTransactions; // FIX: Expose the filter function globally
     </script>
 </body>
 </html>
