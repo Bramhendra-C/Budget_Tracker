@@ -164,7 +164,7 @@
                         <h3 class="text-lg font-semibold">Current Net Balance</h3>
                     </div>
                     <!-- Balance text color is now controlled by JS -->
-                    <p id="balance" class="text-6xl font-extrabold balance-glow">$0.00</p>
+                    <p id="balance" class="text-6xl font-extrabold balance-glow">₹0.00</p>
                 </div>
 
                 <!-- Income and Expense Chips -->
@@ -172,14 +172,14 @@
                     <div class="small-card p-4 border-l-4 border-emerald-500 flex items-center justify-between">
                         <div>
                             <h3 class="text-sm font-medium text-gray-500 mb-1">Total Income</h3>
-                            <p id="income" class="text-xl font-bold income-text">$0.00</p>
+                            <p id="income" class="text-xl font-bold income-text">₹0.00</p>
                         </div>
                          <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8v2m0 4v2m-6 3h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                     </div>
                     <div class="small-card p-4 border-l-4 border-red-500 flex items-center justify-between">
                          <div>
                             <h3 class="text-sm font-medium text-gray-500 mb-1">Total Expense</h3>
-                            <p id="expense" class="text-xl font-bold expense-text">$0.00</p>
+                            <p id="expense" class="text-xl font-bold expense-text">₹0.00</p>
                         </div>
                         <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l-1 12H6L5 9z"></path></svg>
                     </div>
@@ -195,7 +195,7 @@
                         <div class="text-center pb-4">
                             <label for="amount" class="block text-sm font-medium text-gray-500">AMOUNT</label>
                             <div class="flex items-center justify-center space-x-1 mt-1">
-                                <span class="text-4xl font-extrabold text-gray-700">$</span>
+                                <span class="text-4xl font-extrabold text-gray-700">₹</span>
                                 <input type="number" id="amount" placeholder="0.00" step="0.01" required
                                        class="text-5xl font-extrabold text-gray-900 border-b-2 border-gray-200 focus:border-blue-600 w-2/3 text-center p-0 appearance-none focus:outline-none bg-transparent transition-colors duration-200">
                             </div>
@@ -328,8 +328,9 @@
                     </div>
                 </div>
 
+                <!-- EXPENSE BREAKDOWN CHART -->
                 <div class="primary-card p-6 mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Category Breakdown</h2>
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Expense Breakdown</h2>
                     <p class="text-sm text-gray-500 mb-4">Expenses by category for the selected period.</p>
                     <div class="h-80 w-full flex justify-center">
                          <canvas id="categoryBreakdownChart" class="max-h-80"></canvas>
@@ -337,9 +338,22 @@
                     <!-- Total Expense Display below the chart -->
                     <div class="mt-6 pt-4 border-t border-gray-100 text-center">
                         <p class="text-base font-semibold text-gray-600">Total Expenses Analyzed</p>
-                        <p id="breakdown-total" class="text-3xl font-extrabold text-red-600 mt-1">$0.00</p>
+                        <p id="breakdown-total" class="text-3xl font-extrabold text-red-600 mt-1">₹0.00</p>
                     </div>
-                    <!-- END TOTAL -->
+                </div>
+
+                <!-- INCOME BREAKDOWN CHART (NEW) -->
+                <div class="primary-card p-6 mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Income Breakdown</h2>
+                    <p class="text-sm text-gray-500 mb-4">Income by category for the selected period.</p>
+                    <div class="h-80 w-full flex justify-center">
+                         <canvas id="incomeBreakdownChart" class="max-h-80"></canvas>
+                    </div>
+                    <!-- Total Income Display below the chart -->
+                    <div class="mt-6 pt-4 border-t border-gray-100 text-center">
+                        <p class="text-base font-semibold text-gray-600">Total Income Analyzed</p>
+                        <p id="income-breakdown-total" class="text-3xl font-extrabold text-emerald-600 mt-1">₹0.00</p>
+                    </div>
                 </div>
             </div>
             <!-- END ANALYTICS VIEW -->
@@ -396,7 +410,7 @@
         // --- GLOBAL SETUP & LOCAL STORAGE INIT ---
 
         let transactions = [];
-        let trendChart, breakdownChart; // Global Chart.js instances
+        let trendChart, breakdownChart, incomeChart; // Global Chart.js instances (Added incomeChart)
         let aggregatedData = null; // Global variable to store aggregated data
         let currentPeriod = 'month'; // Default period for analytics
         
@@ -410,14 +424,15 @@
         ];
 
         /**
-         * Converts a number to a currency string format.
+         * Converts a number to a currency string format (Indian Rupees).
          * @param {number} amount - The numeric amount.
          * @returns {string} - The formatted currency string.
          */
         const formatCurrency = (amount) => {
-            return new Intl.NumberFormat('en-US', {
+            // Updated to Indian Rupee format
+            return new Intl.NumberFormat('en-IN', { 
                 style: 'currency',
-                currency: 'USD'
+                currency: 'INR'
             }).format(amount);
         };
 
@@ -500,7 +515,7 @@
             const dd = String(today.getDate()).padStart(2, '0');
             document.getElementById('date').value = `${yyyy}-${mm}-${dd}`; // Sets the date to today
             
-            // Time input is left blank to allow user to set it, but we don't default it.
+            // Time input is left blank to allow user to set it.
             document.getElementById('time').value = '';
 
             saveTransactions(); // Initial rendering
@@ -900,6 +915,7 @@
          * Creates a single transaction HTML element.
          * @param {object} t - Transaction object.
          * @param {boolean} isFullList - If true, apply minimal padding/margin for grouped list.
+         * @returns {HTMLElement} The created list item element.
          */
         const createTransactionElement = (t, isFullList = false) => {
             const isIncome = t.type === 'income';
@@ -953,13 +969,14 @@
         };
 
 
-        // --- ANALYTICS AND CHARTING LOGIC (Updated for Day/Week) ---
+        // --- ANALYTICS AND CHARTING LOGIC (Updated for Income Breakdown) ---
 
         const aggregateData = (allTransactions, period) => {
             const transactionsWithTimestamp = allTransactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
             const periodExpenses = new Map(); 
             const periodIncomes = new Map(); 
             const categoryExpenses = new Map(); 
+            const categoryIncomes = new Map(); // New Map for Income Breakdown
             const today = new Date();
             
             let timeWindowStart;
@@ -1031,6 +1048,7 @@
                         categoryExpenses.set(category, (categoryExpenses.get(category) || 0) + amount);
                     } else if (t.type === 'income') {
                         periodIncomes.set(key, (periodIncomes.get(key) || 0) + amount);
+                        categoryIncomes.set(category, (categoryIncomes.get(category) || 0) + amount); // Store income by category
                     }
                 }
             });
@@ -1071,11 +1089,26 @@
             const breakdownLabels = Array.from(categoryExpenses.keys());
             const breakdownData = Array.from(categoryExpenses.values());
 
-            return { trendLabels, trendDataExpense, trendDataIncome, trendDataNetFlow, breakdownLabels, breakdownData };
+            const incomeLabels = Array.from(categoryIncomes.keys()); // Labels for income chart
+            const incomeData = Array.from(categoryIncomes.values()); // Data for income chart
+
+            return { 
+                trendLabels, 
+                trendDataExpense, 
+                trendDataIncome, 
+                trendDataNetFlow, 
+                breakdownLabels, 
+                breakdownData,
+                incomeLabels, // New
+                incomeData    // New
+            };
         };
 
         // Premium Color Palette
         const chartColors = ['#2563eb', '#059669', '#f97316', '#ef4444', '#8b5cf6', '#06b6d4', '#4b5563', '#eab308'];
+        // Income specific colors (lighter, friendlier greens/blues)
+        const incomeColors = ['#059669', '#34d399', '#60a5fa', '#3b82f6', '#10b981'];
+
 
         const renderTrendChart = (data, viewMode) => {
             if (trendChart) trendChart.destroy();
@@ -1089,7 +1122,7 @@
 
             let datasets = [];
             let chartTitleSuffix = '';
-            let yAxesTitle = 'Amount ($)';
+            let yAxesTitle = 'Amount (₹)';
 
             // Define base properties for all line datasets (IMPROVED STYLING)
             const baseDatasetProps = {
@@ -1143,7 +1176,7 @@
                     pointBorderColor: 'white'
                 });
                 chartTitleSuffix = 'Net Flow (Income - Expense)';
-                yAxesTitle = 'Net Balance ($)';
+                yAxesTitle = 'Net Balance (₹)';
             }
             
             const periodText = (currentPeriod) => {
@@ -1188,7 +1221,7 @@
                         y: { 
                             beginAtZero: viewMode !== 'net_flow', 
                             title: { display: true, text: yAxesTitle, color: '#1f2937', font: { weight: 'bold' } }, // Darker title
-                            ticks: { color: '#4b5563' }, // Darker numbers
+                            ticks: { color: '#4b5563', callback: (value) => formatCurrency(value) }, // Use formatCurrency for y-axis ticks
                             grid: { color: 'rgba(0, 0, 0, 0.08)', lineWidth: 1 } // Thicker, lighter grid lines
                         }, 
                         x: { 
@@ -1199,30 +1232,38 @@
                 }
             });
         };
+        
+        /**
+         * Helper function to render a single Doughnut Chart (used for both Income and Expense)
+         * @param {string} ctxId - The canvas ID.
+         * @param {string} chartVarName - The name of the global variable holding the chart instance ('breakdownChart' or 'incomeChart').
+         * @param {string[]} labels - Chart labels.
+         * @param {number[]} data - Chart data.
+         * @param {string} totalMetricId - ID of the element to display the total amount.
+         * @param {string} totalColor - Tailwind color class for the total amount text.
+         * @param {string[]} chartColors - Array of colors for the segments.
+         */
+        const renderDoughnutChart = (chartVar, ctxId, labels, data, totalMetricId, totalColor, chartColors) => {
+            // FIX: Use the global variable reference directly for destroy check
+            if (chartVar && chartVar.destroy) chartVar.destroy();
 
-        const renderCharts = (data) => {
-            const selectedView = document.querySelector('input[name="trendView"]:checked').value || 'expense';
-            renderTrendChart(data, selectedView);
+            const totalAmount = data.reduce((sum, val) => sum + val, 0);
+
+            // Update Total Metric Display below chart
+            document.getElementById(totalMetricId).textContent = formatCurrency(totalAmount);
+            document.getElementById(totalMetricId).classList.remove('text-red-600', 'text-emerald-600');
+            document.getElementById(totalMetricId).classList.add(totalColor);
             
-            if (breakdownChart) breakdownChart.destroy();
-
-            const totalExpense = data.breakdownData.reduce((sum, val) => sum + val, 0);
-
-            // --- Update Total Expense Display below chart ---
-            document.getElementById('breakdown-total').textContent = formatCurrency(totalExpense);
-
-
-            // --- Doughnut Chart Center Text Plugin is REMOVED ---
-
+            const ctx = document.getElementById(ctxId).getContext('2d');
             
-            const breakdownCtx = document.getElementById('categoryBreakdownChart').getContext('2d');
-            breakdownChart = new Chart(breakdownCtx, {
+            // Create and return the new chart instance
+            return new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: data.breakdownLabels,
+                    labels: labels,
                     datasets: [{
-                        data: data.breakdownData,
-                        backgroundColor: chartColors.slice(0, data.breakdownLabels.length),
+                        data: data,
+                        backgroundColor: chartColors.slice(0, labels.length),
                         hoverOffset: 10,
                         borderWidth: 5, // Thicker segment borders
                         borderColor: 'white'
@@ -1240,8 +1281,8 @@
                         // Data Labels Plugin Configuration
                         datalabels: {
                             formatter: (value, context) => {
-                                if (totalExpense === 0) return '';
-                                const percentage = Math.round((value / totalExpense) * 100);
+                                if (totalAmount === 0) return '';
+                                const percentage = Math.round((value / totalAmount) * 100);
                                 return percentage > 5 ? percentage + '%' : ''; // Only show labels for segments > 5%
                             },
                             color: '#fff',
@@ -1252,18 +1293,45 @@
                          tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
                                     const value = context.parsed;
-                                    const percentage = total === 0 ? 0 : Math.round((value / total) * 100);
+                                    const percentage = totalAmount === 0 ? 0 : Math.round((value / totalAmount) * 100);
                                     return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
                                 }
                             }
                         }
                     }
                 },
-                plugins: [ChartDataLabels] // REMOVED centerTextPlugin registration
+                plugins: [ChartDataLabels]
             });
         };
+
+        const renderCharts = (data) => {
+            const selectedView = document.querySelector('input[name="trendView"]:checked').value || 'expense';
+            renderTrendChart(data, selectedView);
+            
+            // Render Expense Breakdown Chart
+            breakdownChart = renderDoughnutChart(
+                breakdownChart, // Pass chart variable reference
+                'categoryBreakdownChart', 
+                data.breakdownLabels, 
+                data.breakdownData, 
+                'breakdown-total', 
+                'text-red-600', 
+                chartColors
+            );
+
+            // Render Income Breakdown Chart
+            incomeChart = renderDoughnutChart(
+                incomeChart, // Pass chart variable reference
+                'incomeBreakdownChart', 
+                data.incomeLabels, 
+                data.incomeData, 
+                'income-breakdown-total', 
+                'text-emerald-600', 
+                incomeColors
+            );
+        };
+
 
         const updateTrendChart = () => {
             const selectedValue = document.querySelector('input[name="trendView"]:checked').value;
