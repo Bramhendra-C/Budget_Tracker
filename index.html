@@ -332,8 +332,13 @@
                 <div class="primary-card p-6 mb-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Expense Breakdown</h2>
                     <p class="text-sm text-gray-500 mb-4">Expenses by category for the selected period.</p>
-                    <div class="h-80 w-full flex justify-center">
+                    <div class="relative h-80 w-full flex justify-center items-center">
                          <canvas id="categoryBreakdownChart" class="max-h-80"></canvas>
+                         <!-- Center Text for Expense Breakdown (Now invisible and empty) -->
+                         <div id="breakdown-center-text" class="absolute flex flex-col items-center justify-center text-center hidden">
+                            <p class="text-base font-semibold text-gray-600">Total %</p>
+                            <p id="breakdown-center-percentage" class="text-3xl font-extrabold text-red-600 mt-1">100%</p>
+                         </div>
                     </div>
                     <!-- Total Expense Display below the chart -->
                     <div class="mt-6 pt-4 border-t border-gray-100 text-center">
@@ -346,8 +351,13 @@
                 <div class="primary-card p-6 mb-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Income Breakdown</h2>
                     <p class="text-sm text-gray-500 mb-4">Income by category for the selected period.</p>
-                    <div class="h-80 w-full flex justify-center">
+                    <div class="relative h-80 w-full flex justify-center items-center">
                          <canvas id="incomeBreakdownChart" class="max-h-80"></canvas>
+                          <!-- Center Text for Income Breakdown (Now invisible and empty) -->
+                         <div id="income-center-text" class="absolute flex flex-col items-center justify-center text-center hidden">
+                            <p class="text-base font-semibold text-gray-600">Total %</p>
+                            <p id="income-center-percentage" class="text-3xl font-extrabold text-emerald-600 mt-1">100%</p>
+                         </div>
                     </div>
                     <!-- Total Income Display below the chart -->
                     <div class="mt-6 pt-4 border-t border-gray-100 text-center">
@@ -495,7 +505,7 @@
                 }
 
             } catch (e) {
-                console.error("Error saving transactions to local storage:", e);
+                console.error("Error saving data.", 'error');
                 showMessage("Error saving data.", 'error');
             }
         };
@@ -969,7 +979,7 @@
         };
 
 
-        // --- ANALYTICS AND CHARTING LOGIC (Updated for Income Breakdown) ---
+        // --- ANALYTICS AND CHARTING LOGIC (Updated for Impressive Theme) ---
 
         const aggregateData = (allTransactions, period) => {
             const transactionsWithTimestamp = allTransactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
@@ -1109,73 +1119,104 @@
         // Income specific colors (lighter, friendlier greens/blues)
         const incomeColors = ['#059669', '#34d399', '#60a5fa', '#3b82f6', '#10b981'];
 
+        // --- CUSTOM PLUGIN FOR 3D-LIKE BAR CHART SHADOWS (IMPROVED) ---
+        const barShadowPlugin = {
+            id: 'barShadowPlugin',
+            beforeDraw: (chart) => {
+                const ctx = chart.ctx;
+                const { data, chartArea, scales } = chart;
+                const { x, y } = scales;
+
+                if (chart.config.type !== 'bar') return;
+
+                data.datasets.forEach((dataset, datasetIndex) => {
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    
+                    // Stronger Shadow properties for 3D look
+                    ctx.save();
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)'; // Darker shadow
+                    ctx.shadowBlur = 15; // More blur
+                    ctx.shadowOffsetX = 2; // Slight offset for depth
+                    ctx.shadowOffsetY = 6; // Lifted effect
+
+                    meta.data.forEach((bar, index) => {
+                        const { x: barX, y: barY, base, width, height } = bar;
+                        const yBase = y.getPixelForValue(0); 
+
+                        if (Math.abs(barY - yBase) > 0) {
+                            ctx.fillStyle = dataset.backgroundColor; 
+                            
+                            // Draw a shadow rectangle
+                            ctx.beginPath();
+                            // Slightly adjust position to make the shadow sit right below the bar
+                            const barTop = Math.min(barY, yBase);
+                            const barBottom = Math.max(barY, yBase);
+                            ctx.roundRect(barX - width / 2, barTop, width, barBottom - barTop, dataset.borderRadius);
+                            ctx.fill();
+                        }
+                    });
+
+                    ctx.restore();
+                });
+            }
+        };
+
 
         const renderTrendChart = (data, viewMode) => {
             if (trendChart) trendChart.destroy();
 
             const trendCtx = document.getElementById('spendingTrendChart').getContext('2d');
             
-            // --- Clean Blue Gradient for Expense/Net Flow Fill ---
-            const blueFillGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
-            blueFillGradient.addColorStop(0, 'rgba(37, 99, 235, 0.4)'); // Light translucent blue
-            blueFillGradient.addColorStop(1, 'rgba(37, 99, 235, 0.05)'); // Very faint blue
+            const blueColor = '#2563eb';
+            const greenColor = '#059669';
+            const redColor = '#dc2626';
 
             let datasets = [];
-            let chartTitleSuffix = '';
+            let chartType = 'bar'; 
             let yAxesTitle = 'Amount (₹)';
 
-            // Define base properties for all line datasets (IMPROVED STYLING)
+            // Define base properties for all bar datasets
             const baseDatasetProps = {
-                borderWidth: 4,     // Thicker line
-                tension: 0.4,       // Smooth curve
-                pointRadius: 6,     // Larger points for clear tracking
-                pointHoverRadius: 8,
-                fill: true,
-                pointBackgroundColor: 'white', 
-                pointBorderWidth: 2
+                borderWidth: 0,
+                borderRadius: 8, // Rounded corners for bars
+                barPercentage: 0.7, // Slightly thinner bars for better separation
+                categoryPercentage: 0.8,
             };
 
             if (viewMode === 'expense') {
                 datasets.push({
-                    label: 'Expenses', data: data.trendDataExpense, 
-                    borderColor: '#2563eb', // Strong blue line
-                    backgroundColor: blueFillGradient, // Use the simple gradient for fill
+                    label: 'Expenses', 
+                    data: data.trendDataExpense, 
+                    backgroundColor: blueColor, 
+                    hoverBackgroundColor: '#1d4ed8',
                     ...baseDatasetProps, 
-                    fill: 'start'
                 });
-                chartTitleSuffix = 'Expenses';
+                yAxesTitle = 'Expense Amount (₹)';
             } else if (viewMode === 'income_expense') {
                 datasets.push({
-                    label: 'Income', data: data.trendDataIncome, 
-                    borderColor: '#059669', // Emerald Green
-                    backgroundColor: 'rgba(5, 150, 105, 0.1)', 
+                    label: 'Income', 
+                    data: data.trendDataIncome, 
+                    backgroundColor: greenColor, // Green for Income
+                    hoverBackgroundColor: '#047857',
                     ...baseDatasetProps, 
-                    pointRadius: 4, // Smaller points for two lines
-                    pointHoverRadius: 6,
-                    fill: false
                 });
                 datasets.push({
-                    label: 'Expenses', data: data.trendDataExpense, 
-                    borderColor: '#dc2626', // Red
-                    backgroundColor: 'rgba(220, 38, 38, 0.1)', 
+                    label: 'Expenses', 
+                    data: data.trendDataExpense, 
+                    backgroundColor: redColor, // Red for Expenses
+                    hoverBackgroundColor: '#b91c1c',
                     ...baseDatasetProps, 
-                    pointRadius: 4, // Smaller points for two lines
-                    pointHoverRadius: 6,
-                    fill: false
                 });
-                chartTitleSuffix = 'Income vs. Expense';
+                yAxesTitle = 'Amount (₹)';
             } else if (viewMode === 'net_flow') {
-                datasets.push({
-                    label: 'Net Flow (Income - Expense)', data: data.trendDataNetFlow, 
-                    borderColor: '#2563eb', // Strong blue line
-                    backgroundColor: blueFillGradient,
-                    ...baseDatasetProps, 
-                    fill: 'start',
-                    // Keep dynamic point colors for visual cue of surplus/deficit
-                    pointBackgroundColor: data.trendDataNetFlow.map(val => val >= 0 ? '#059669' : '#dc2626'),
-                    pointBorderColor: 'white'
+                 datasets.push({
+                    label: 'Net Flow', 
+                    data: data.trendDataNetFlow, 
+                    // Dynamic color for bars based on positive (green) or negative (red)
+                    backgroundColor: data.trendDataNetFlow.map(val => val >= 0 ? greenColor : redColor),
+                    hoverBackgroundColor: data.trendDataNetFlow.map(val => val >= 0 ? '#047857' : '#b91c1c'),
+                    ...baseDatasetProps,
                 });
-                chartTitleSuffix = 'Net Flow (Income - Expense)';
                 yAxesTitle = 'Net Balance (₹)';
             }
             
@@ -1189,9 +1230,15 @@
             document.getElementById('trend-chart-title').textContent = `${periodText(currentPeriod)} Spending Trends`;
 
             trendChart = new Chart(trendCtx, {
-                type: 'line', data: { labels: data.trendLabels, datasets: datasets },
+                type: chartType, 
+                data: { labels: data.trendLabels, datasets: datasets },
                 options: {
                     responsive: true, maintainAspectRatio: false,
+                    indexAxis: 'x',
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
                     plugins: { 
                         legend: { 
                             display: viewMode === 'income_expense', 
@@ -1215,49 +1262,54 @@
                                     return label;
                                 }
                             }
-                        }
+                        },
+                        barShadowPlugin: {} 
                     },
                     scales: { 
                         y: { 
-                            beginAtZero: viewMode !== 'net_flow', 
-                            title: { display: true, text: yAxesTitle, color: '#1f2937', font: { weight: 'bold' } }, // Darker title
-                            ticks: { color: '#4b5563', callback: (value) => formatCurrency(value) }, // Use formatCurrency for y-axis ticks
-                            grid: { color: 'rgba(0, 0, 0, 0.08)', lineWidth: 1 } // Thicker, lighter grid lines
+                            beginAtZero: true, 
+                            title: { display: true, text: yAxesTitle, color: '#1f2937', font: { weight: 'bold' } }, 
+                            ticks: { color: '#4b5563', callback: (value) => formatCurrency(value) },
+                            grid: { color: 'rgba(0, 0, 0, 0.08)', lineWidth: 1 } 
                         }, 
                         x: { 
+                            stacked: false,
                             grid: { display: false },
-                            ticks: { color: '#4b5563', font: { weight: '600' } } // Darker labels
+                            ticks: { color: '#4b5563', font: { weight: '600' } }
                         } 
                     }
-                }
+                },
+                plugins: [barShadowPlugin]
             });
         };
         
         /**
          * Helper function to render a single Doughnut Chart (used for both Income and Expense)
-         * @param {object} chartVar - The global variable reference (e.g., breakdownChart).
-         * @param {string} ctxId - The canvas ID.
-         * @param {string[]} labels - Chart labels.
-         * @param {number[]} data - Chart data.
-         * @param {string} totalMetricId - ID of the element to display the total amount.
-         * @param {string} totalColor - Tailwind color class for the total amount text.
-         * @param {string[]} chartColors - Array of colors for the segments.
          */
-        const renderDoughnutChart = (chartVar, ctxId, labels, data, totalMetricId, totalColor, chartColors) => {
+        const renderDoughnutChart = (chartVar, ctxId, labels, data, totalMetricId, totalColor, chartColors, centerTextId) => {
             // FIX: Use the global variable reference directly for destroy check
             if (chartVar && chartVar.destroy) chartVar.destroy();
 
             const totalAmount = data.reduce((sum, val) => sum + val, 0);
+            
+            // --- REMOVED CENTER PERCENTAGE CALCULATION ---
 
             // Update Total Metric Display below chart
             document.getElementById(totalMetricId).textContent = formatCurrency(totalAmount);
             document.getElementById(totalMetricId).classList.remove('text-red-600', 'text-emerald-600');
             document.getElementById(totalMetricId).classList.add(totalColor);
             
+            // --- FIX: Ensure the percentage display elements are hidden and empty ---
+            const percentageElement = document.getElementById(centerTextId.replace('-text', '-percentage'));
+            if (percentageElement) {
+                percentageElement.textContent = ' '; // Set to empty string
+            }
+            // --- END FIX ---
+            
             const ctx = document.getElementById(ctxId).getContext('2d');
             
             // Create and return the new chart instance
-            return new Chart(ctx, {
+            const newChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: labels,
@@ -1265,13 +1317,13 @@
                         data: data,
                         backgroundColor: chartColors.slice(0, labels.length),
                         hoverOffset: 10,
-                        borderWidth: 5, // Thicker segment borders
+                        borderWidth: 8, // Thin ring (larger cutout than border width)
                         borderColor: 'white'
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    cutout: '70%', // Make the hole larger
+                    cutout: '80%', // Make the hole much larger for the ring effect (like in the image)
                     plugins: { 
                         legend: { 
                             position: 'right', 
@@ -1283,10 +1335,11 @@
                             formatter: (value, context) => {
                                 if (totalAmount === 0) return '';
                                 const percentage = Math.round((value / totalAmount) * 100);
-                                return percentage > 5 ? percentage + '%' : ''; // Only show labels for segments > 5%
+                                // Display percentage only next to the segment (for high-value segments)
+                                return percentage > 10 ? percentage + '%' : ''; 
                             },
                             color: '#fff',
-                            font: { weight: 'extrabold', size: 14 }, // Extra bold percentage labels
+                            font: { weight: 'extrabold', size: 14 }, 
                             textShadowBlur: 4,
                             textShadowColor: 'rgba(0, 0, 0, 0.5)'
                         },
@@ -1303,6 +1356,11 @@
                 },
                 plugins: [ChartDataLabels]
             });
+
+            // --- IMPRESSIVE UPDATE: Center Text Styling (Removed positioning as elements are now hidden) ---
+            // The center text elements are now hidden via Tailwind class `hidden` in HTML
+            
+            return newChart;
         };
 
         const renderCharts = (data) => {
@@ -1317,7 +1375,8 @@
                 data.breakdownData, 
                 'breakdown-total', 
                 'text-red-600', 
-                chartColors
+                chartColors,
+                'breakdown-center-text' // Pass center text ID
             );
 
             // Render Income Breakdown Chart
@@ -1328,7 +1387,8 @@
                 data.incomeData, 
                 'income-breakdown-total', 
                 'text-emerald-600', 
-                incomeColors
+                incomeColors,
+                'income-center-text' // Pass center text ID
             );
         };
 
