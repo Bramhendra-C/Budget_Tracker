@@ -1188,33 +1188,9 @@
             document.getElementById('breakdown-total').textContent = formatCurrency(totalExpense);
 
 
-            // --- Doughnut Chart Center Text Plugin (Restored and Improved) ---
-            const centerTextPlugin = {
-                id: 'centerText',
-                beforeDraw: (chart) => {
-                    if (totalExpense === 0) return; 
+            // --- Doughnut Chart Center Text Plugin (REMOVED) ---
+            // Removing the centerTextPlugin definition entirely
 
-                    const { ctx, width, height } = chart;
-                    ctx.save();
-                    const centerX = width / 2;
-                    const centerY = height / 2;
-                    
-                    // Total Expense Value
-                    ctx.font = 'bold 2rem Inter';
-                    ctx.fillStyle = '#dc2626'; // Red-600
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(formatCurrency(totalExpense), centerX, centerY - 10);
-                    
-                    // Label
-                    ctx.font = 'bold 0.8rem Inter';
-                    ctx.fillStyle = '#6b7280'; // gray-500
-                    ctx.fillText('Total Expenses', centerX, centerY + 25);
-
-
-                    ctx.restore();
-                }
-            };
             
             const breakdownCtx = document.getElementById('categoryBreakdownChart').getContext('2d');
             breakdownChart = new Chart(breakdownCtx, {
@@ -1262,7 +1238,7 @@
                         }
                     }
                 },
-                plugins: [ChartDataLabels, centerTextPlugin] // Register both plugins
+                plugins: [ChartDataLabels] // REMOVED centerTextPlugin registration
             });
         };
 
