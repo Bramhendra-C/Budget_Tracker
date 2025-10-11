@@ -221,12 +221,12 @@
                 <!-- Budget Progress Section (NEW) -->
                 <div class="primary-card p-6 mb-8">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-gray-800">Monthly Budget Progress</h2>
-                        <button onclick="showView('budget-settings')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">Set Budgets</button>
+                        <h2 class="text-xl font-bold text-gray-800">Current Budget Progress</h2>
+                        <button onclick="showView('budget-settings')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">Set/Edit Budgets</button>
                     </div>
                     
                     <div id="budget-progress-list" class="space-y-4">
-                         <p class="text-center text-gray-500 text-sm">No monthly budgets set. Click 'Set Budgets' to start tracking goals!</p>
+                         <p class="text-center text-gray-500 text-sm">No budgets set. Click 'Set/Edit Budgets' to start tracking goals!</p>
                     </div>
                 </div>
 
@@ -802,49 +802,58 @@
             }, {});
             
             let hasBudgets = false;
+            const periodMap = {
+                'Daily': currentDayKey,
+                'Monthly': currentMonthKey,
+                'Yearly': currentYearKey
+            };
+            const renderedBudgets = [];
 
-            // 2. Render progress bar for each set budget (only render monthly progress on dashboard)
+            // 2. Render progress bar for each set budget (all periods)
             for (const category in budgets) {
-                const limit = budgets[category]['Monthly'] ? Number(budgets[category]['Monthly']) : 0;
-                
-                if (limit > 0) {
-                    const spent = periodExpenses[category]?.['Monthly'] || 0;
-                    const percentage = limit > 0 ? Math.min(100, (spent / limit) * 100) : (spent > 0 ? 100 : 0);
+                for (const period in budgets[category]) {
+                    const limit = Number(budgets[category][period]);
                     
-                    let progressBarClass = 'bg-budget-green';
-                    let statusText = 'On Track';
-                    
-                    if (percentage >= 100) {
-                        progressBarClass = 'bg-budget-red';
-                        statusText = 'Limit Exceeded!';
-                    } else if (percentage >= 80) {
-                        progressBarClass = 'bg-budget-orange';
-                        statusText = 'Approaching Limit';
+                    if (limit > 0) {
+                        const key = period; // 'Daily', 'Monthly', or 'Yearly'
+                        const spent = periodExpenses[category]?.[key] || 0;
+                        const percentage = limit > 0 ? Math.min(100, (spent / limit) * 100) : (spent > 0 ? 100 : 0);
+                        
+                        let progressBarClass = 'bg-budget-green';
+                        let statusText = 'On Track';
+                        
+                        if (percentage >= 100) {
+                            progressBarClass = 'bg-budget-red';
+                            statusText = 'Limit Exceeded!';
+                        } else if (percentage >= 80) {
+                            progressBarClass = 'bg-budget-orange';
+                            statusText = 'Approaching Limit';
+                        }
+                        
+                        const remaining = limit - spent;
+                        const progressElement = document.createElement('div');
+                        progressElement.className = 'space-y-1';
+                        progressElement.innerHTML = `
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-semibold text-gray-800">${category} (${period})</span>
+                                <span class="text-xs font-medium ${progressBarClass.replace('bg-', 'text-')}">${statusText}</span>
+                            </div>
+                            <div class="flex justify-between items-end text-xs font-medium">
+                                <span class="text-gray-500">${formatCurrency(spent)} / ${formatCurrency(limit)}</span>
+                                <span class="${remaining < 0 ? 'text-red-600' : 'text-gray-600'}">${formatCurrency(Math.abs(remaining))} ${remaining < 0 ? 'Over' : 'Left'}</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="h-2.5 rounded-full ${progressBarClass} transition-all duration-500" style="width: ${percentage}%"></div>
+                            </div>
+                        `;
+                        listElement.appendChild(progressElement);
+                        hasBudgets = true;
                     }
-                    
-                    const remaining = limit - spent;
-                    const progressElement = document.createElement('div');
-                    progressElement.className = 'space-y-1';
-                    progressElement.innerHTML = `
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm font-semibold text-gray-800">${category} (Monthly)</span>
-                            <span class="text-xs font-medium ${progressBarClass.replace('bg-', 'text-')}">${statusText}</span>
-                        </div>
-                        <div class="flex justify-between items-end text-xs font-medium">
-                            <span class="text-gray-500">${formatCurrency(spent)} / ${formatCurrency(limit)}</span>
-                            <span class="${remaining < 0 ? 'text-red-600' : 'text-gray-600'}">${formatCurrency(Math.abs(remaining))} ${remaining < 0 ? 'Over' : 'Left'}</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="h-2.5 rounded-full ${progressBarClass} transition-all duration-500" style="width: ${percentage}%"></div>
-                        </div>
-                    `;
-                    listElement.appendChild(progressElement);
-                    hasBudgets = true;
                 }
             }
             
             if (!hasBudgets) {
-                 listElement.innerHTML = '<p class="text-center text-gray-500 text-sm">No monthly budgets set. Click \'Set Budgets\' to start tracking goals!</p>';
+                 listElement.innerHTML = '<p class="text-center text-gray-500 text-sm">No budgets set. Click \'Set/Edit Budgets\' to start tracking goals!</p>';
             }
         };
 
@@ -967,87 +976,6 @@
             } else {
                 return `<svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>`;
             }
-        };
-
-
-        /**
-         * Renders the saved budgets in the settings view.
-         */
-        const renderBudgetSettings = () => {
-            const listElement = document.getElementById('current-budgets-list');
-            listElement.innerHTML = '';
-            
-            let hasBudgets = false;
-            
-            // Loop through all categories that have at least one budget set
-            for (const category in budgets) {
-                const periodBudgets = budgets[category];
-                
-                // Loop through periods (Daily, Monthly, Yearly)
-                for (const period in periodBudgets) {
-                    const limit = Number(periodBudgets[period]);
-
-                    if (limit > 0) {
-                        const budgetElement = document.createElement('div');
-                        budgetElement.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
-                        budgetElement.innerHTML = `
-                            <span class="font-semibold text-gray-800">${category} (${period})</span>
-                            <div class="flex items-center space-x-3">
-                                <span class="text-lg font-bold text-blue-600">${formatCurrency(limit)}</span>
-                                
-                                <button class="edit-budget-btn text-gray-400 hover:text-blue-500 transition-colors duration-150 p-1 rounded"
-                                        data-category="${category}" data-period="${period}" title="Edit Budget">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                </button>
-
-                                <button class="delete-budget-btn text-gray-400 hover:text-red-500 transition-colors duration-150 p-1 rounded"
-                                        data-category="${category}" data-period="${period}" title="Remove Budget">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                </button>
-                            </div>
-                        `;
-                        listElement.appendChild(budgetElement);
-                        hasBudgets = true;
-                    }
-                }
-            }
-
-            if (!hasBudgets) {
-                 listElement.innerHTML = '<p class="text-center text-gray-500 p-2">No budgets currently set.</p>';
-            }
-            
-            // Attach listeners
-            listElement.querySelectorAll('.delete-budget-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const category = e.currentTarget.dataset.category;
-                    const period = e.currentTarget.dataset.period;
-                    delete budgets[category][period];
-                    // Clean up category entry if no periods remain
-                    if (Object.keys(budgets[category]).length === 0) {
-                        delete budgets[category];
-                    }
-                    saveBudgets();
-                    showMessage(`Budget for ${category} (${period}) removed.`);
-                });
-            });
-
-            listElement.querySelectorAll('.edit-budget-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const category = e.currentTarget.dataset.category;
-                    const period = e.currentTarget.dataset.period;
-                    
-                    // 1. Select the correct category and period in the form selectors
-                    document.getElementById('budget-category').value = category;
-                    document.querySelector(`input[name="budgetPeriod"][value="${period}"]`).checked = true;
-                    
-                    // 2. Load the amount and update the period label
-                    updateBudgetPeriod(period); // Must call first to update currentBudgetPeriod and label
-                    loadBudgetForEdit(category);
-                    
-                    // 3. Scroll to the top of the form for immediate editing
-                    document.getElementById('budget-settings-view').scrollTo({ top: 0, behavior: 'smooth' });
-                });
-            });
         };
 
 
@@ -1309,7 +1237,7 @@
          */
         const createTransactionElement = (t, isFullList = false) => {
             const isIncome = t.type === 'income';
-            const sign = isIncome ? '+' : '-';
+            const sign = isIncome ? '+' : '-' ;
             const amountClass = isIncome ? 'income-text' : 'expense-text';
             
             const date = new Date(t.timestamp?.seconds * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -1945,12 +1873,17 @@
             };
             
             // --- BUDGET REMINDER CHECK (Only for expenses) ---
+            let budgetExceeded = false;
+            let notificationMessage = null;
+
             if (newTransaction.type === 'expense' && budgets[newTransaction.category]) {
                 const categoryBudgets = budgets[newTransaction.category];
                 const amount = newTransaction.amount;
-                let notificationMessage = null;
 
-                for (const period in categoryBudgets) {
+                // Check Daily, Monthly, then Yearly, and prioritize the first exceeded budget found
+                const periodsToCheck = ['Daily', 'Monthly', 'Yearly'];
+
+                for (const period of periodsToCheck) {
                     const limit = Number(categoryBudgets[period]);
                     if (limit > 0) {
                         // Calculate current spending for this period *before* adding the new transaction
@@ -1958,25 +1891,27 @@
                         const newTotal = spentThisPeriod + amount;
                         
                         if (newTotal > limit && spentThisPeriod <= limit) {
-                            // Budget just exceeded! Show urgent notification.
+                            // Budget just exceeded! 
                             const overAmount = formatCurrency(newTotal - limit);
                             notificationMessage = `⚠️ ${period} Budget Exceeded! ${newTransaction.category} limit was ${formatCurrency(limit)}. You are now over by ${overAmount}.`;
-                            // Set the error message and break, prioritizing the most urgent (first found)
+                            budgetExceeded = true;
+                            // Stop checking and notify immediately
                             break; 
                         }
                     }
                 }
-                
-                if (notificationMessage) {
-                    showMessage(notificationMessage, 'error');
-                }
+            }
+            
+            if (budgetExceeded) {
+                showMessage(notificationMessage, 'error');
             }
             // --- END BUDGET REMINDER CHECK ---
 
             transactions.push(newTransaction);
             saveTransactions();
+            
             // Show success message only if no error message was shown
-            if (!document.getElementById('message-box').classList.contains('bg-red-500')) {
+            if (!budgetExceeded) {
                 showMessage("Transaction added successfully!");
             }
         };
@@ -2013,6 +1948,85 @@
             showMessage("Transaction deleted.");
         };
 
+        /**
+         * Renders the saved budgets in the settings view.
+         */
+        const renderBudgetSettings = () => {
+            const listElement = document.getElementById('current-budgets-list');
+            listElement.innerHTML = '';
+            
+            let hasBudgets = false;
+            
+            // Loop through all categories that have at least one budget set
+            for (const category in budgets) {
+                const periodBudgets = budgets[category];
+                
+                // Loop through periods (Daily, Monthly, Yearly)
+                for (const period in periodBudgets) {
+                    const limit = Number(periodBudgets[period]);
+
+                    if (limit > 0) {
+                        const budgetElement = document.createElement('div');
+                        budgetElement.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+                        budgetElement.innerHTML = `
+                            <span class="font-semibold text-gray-800">${category} (${period})</span>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-lg font-bold text-blue-600">${formatCurrency(limit)}</span>
+                                
+                                <button class="edit-budget-btn text-gray-400 hover:text-blue-500 transition-colors duration-150 p-1 rounded"
+                                        data-category="${category}" data-period="${period}" title="Edit Budget">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                </button>
+
+                                <button class="delete-budget-btn text-gray-400 hover:text-red-500 transition-colors duration-150 p-1 rounded"
+                                        data-category="${category}" data-period="${period}" title="Remove Budget">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        `;
+                        listElement.appendChild(budgetElement);
+                        hasBudgets = true;
+                    }
+                }
+            }
+
+            if (!hasBudgets) {
+                 listElement.innerHTML = '<p class="text-center text-gray-500 p-2">No budgets currently set.</p>';
+            }
+            
+            // Attach listeners
+            listElement.querySelectorAll('.delete-budget-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const category = e.currentTarget.dataset.category;
+                    const period = e.currentTarget.dataset.period;
+                    delete budgets[category][period];
+                    // Clean up category entry if no periods remain
+                    if (Object.keys(budgets[category]).length === 0) {
+                        delete budgets[category];
+                    }
+                    saveBudgets();
+                    showMessage(`Budget for ${category} (${period}) removed.`);
+                });
+            });
+
+            listElement.querySelectorAll('.edit-budget-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const category = e.currentTarget.dataset.category;
+                    const period = e.currentTarget.dataset.period;
+                    
+                    // 1. Select the correct category and period in the form selectors
+                    document.getElementById('budget-category').value = category;
+                    document.querySelector(`input[name="budgetPeriod"][value="${period}"]`).checked = true;
+                    
+                    // 2. Load the amount and update the period label
+                    updateBudgetPeriod(period); // Must call first to update currentBudgetPeriod and label
+                    // loadBudgetForEdit is implicitly called by updateBudgetPeriod now due to the render logic
+                    
+                    // 3. Scroll to the top of the form for immediate editing
+                    document.getElementById('budget-settings-view').scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            });
+        };
 
         // --- EVENT LISTENERS & MAIN EXECUTION ---
 
@@ -2157,6 +2171,7 @@
         window.saveBudgets = saveBudgets; // Expose save budgets for general use
         window.loadBudgetForEdit = loadBudgetForEdit; // Expose load budget for editing
         window.updateBudgetPeriod = updateBudgetPeriod; // Expose new period function
+        window.renderBudgetSettings = renderBudgetSettings; // FIX: Expose renderBudgetSettings globally
     </script>
 </body>
 </html>
