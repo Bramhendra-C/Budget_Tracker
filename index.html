@@ -232,7 +232,15 @@
 
                 <!-- Add New Transaction Form (Quick Add section) -->
                 <div class="primary-card p-6 mb-8">
-                    <h2 class="text-xl font-bold text-gray-800 mb-6">Quick Add Transaction</h2>
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-gray-800">Quick Add Transaction</h2>
+                         <button onclick="showView('import-transactions')" class="text-xs text-gray-500 font-medium hover:text-blue-600 transition-colors">
+                            <span class="flex items-center space-x-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v-1a4 4 0 014-4h8m-12 1h12m-6-8l-4 4 4 4"></path></svg>
+                                <span>Import</span>
+                            </span>
+                        </button>
+                    </div>
                     
                     <form id="transaction-form" class="space-y-6">
 
@@ -456,6 +464,35 @@
                 </div>
             </div>
             <!-- END BUDGET SETTINGS VIEW -->
+            
+            <!-- IMPORT TRANSACTIONS VIEW (SIMULATED BANK LINK) -->
+            <div id="import-transactions-view" class="hidden">
+                 <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
+                    <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
+                        <!-- Back Arrow -->
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 class="text-xl font-extrabold text-gray-800">Import Transactions</h2>
+                    <div class="w-8"></div> 
+                </header>
+
+                <div class="primary-card p-6 mb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Simulated Bank Import</h3>
+                    <p class="text-sm text-gray-600 mb-4">Paste transaction data below (one transaction per line: **AMOUNT, Description, Category**). All imports are recorded as **Expenses** for this demonstration.</p>
+                    <p class="text-xs text-gray-500 mb-4 font-mono bg-gray-100 p-2 rounded">Example: 500, Coffee Shop, Food</p>
+                    
+                    <form id="import-form" class="space-y-4">
+                        <textarea id="import-data" rows="6" placeholder="Paste bank statement lines here (e.g., 125.50, Uber Ride, Transportation)"
+                                  class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        
+                        <button type="submit" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition duration-150 shadow-md shadow-green-500/30">
+                            IMPORT AS EXPENSES
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <!-- END IMPORT TRANSACTIONS VIEW -->
+
 
             <!-- FULL TRANSACTION LIST VIEW (New View) -->
             <div id="full-list-view" class="hidden">
@@ -766,13 +803,14 @@
 
         /**
          * Switches the active view (Dashboard, Analytics, List, or Budget) and updates the navigation bar state.
-         * @param {string} viewName - 'dashboard', 'analytics', 'list', or 'budget-settings'.
+         * @param {string} viewName - 'dashboard', 'analytics', 'list', 'budget-settings', or 'import-transactions'.
          */
         const showView = (viewName) => {
             document.getElementById('dashboard-view').classList.add('hidden');
             document.getElementById('analytics-view').classList.add('hidden');
             document.getElementById('full-list-view').classList.add('hidden'); 
-            document.getElementById('budget-settings-view').classList.add('hidden'); // Hide budget view
+            document.getElementById('budget-settings-view').classList.add('hidden');
+            document.getElementById('import-transactions-view').classList.add('hidden'); // NEW VIEW
 
             // Reset navigation bar colors
             document.getElementById('nav-dashboard').classList.remove('nav-button-active', 'text-gray-500');
@@ -797,6 +835,8 @@
             } else if (viewName === 'budget-settings') {
                 document.getElementById('budget-settings-view').classList.remove('hidden');
                 renderBudgetSettings();
+            } else if (viewName === 'import-transactions') {
+                document.getElementById('import-transactions-view').classList.remove('hidden');
             }
         };
         
@@ -1731,9 +1771,10 @@
             
             let timestampSeconds;
             
+            // Get data from the form inputs, defaulting to 'now' if date/time is missing
             const dateString = document.getElementById('date').value;
             const timeString = document.getElementById('time').value;
-            const now = new Date(); // Use current date/time as fallback
+            const now = new Date(); 
 
             // 1. Determine the Base Date (YYYY-MM-DD)
             let baseDate = now;
@@ -1747,7 +1788,6 @@
                 baseDate.setHours(hours, minutes, 0, 0);
             } else if (dateString && !timeString) {
                 // If ONLY date is provided, use the time from when the app loaded (now)
-                // This ensures sorting works correctly within a manually set date
                 baseDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
             }
 
@@ -1767,6 +1807,32 @@
             saveTransactions();
             showMessage("Transaction added successfully!");
         };
+        
+        /**
+         * Adds a transaction using data parsed from the simulated import.
+         * @param {string} description - Transaction description.
+         * @param {number} amount - Transaction amount.
+         * @param {string} category - Transaction category.
+         * @param {string} type - 'expense' or 'income'.
+         */
+        const addImportedTransaction = (description, amount, category, type = 'expense') => {
+             const newId = Date.now().toString() + Math.random().toString(16).slice(2);
+             
+             // Use current timestamp for imported transactions
+             const timestampSeconds = Math.floor(Date.now() / 1000); 
+
+             const newTransaction = {
+                 id: newId,
+                 description: description,
+                 amount: Number(amount),
+                 type: type,
+                 category: category,
+                 timestamp: { seconds: timestampSeconds }
+             };
+             
+             transactions.push(newTransaction);
+        };
+
 
         const deleteTransaction = (docId) => {
             transactions = transactions.filter(t => t.id !== docId);
@@ -1843,6 +1909,43 @@
             }
         });
         // --- End Budget Form Submission ---
+        
+        // --- Import Form Submission (NEW) ---
+        document.getElementById('import-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const importData = document.getElementById('import-data').value.trim();
+            const lines = importData.split('\n').filter(line => line.trim() !== '');
+            let importedCount = 0;
+            
+            lines.forEach(line => {
+                // Expects: AMOUNT, Description, Category (comma-separated)
+                const parts = line.split(',').map(p => p.trim());
+                
+                if (parts.length >= 3) {
+                    const amount = parseFloat(parts[0]);
+                    const description = parts[1] || 'Imported Transaction';
+                    // Check if the imported category is one of the predefined expense categories
+                    const category = EXPENSE_CATEGORIES.includes(parts[2]) ? parts[2] : 'Uncategorized';
+                    
+                    if (!isNaN(amount) && amount > 0) {
+                        // All imports are treated as expenses
+                        addImportedTransaction(description, amount, category, 'expense');
+                        importedCount++;
+                    }
+                }
+            });
+            
+            if (importedCount > 0) {
+                document.getElementById('import-data').value = '';
+                saveTransactions();
+                showMessage(`${importedCount} transactions imported successfully as Expenses!`);
+                showView('dashboard'); // Redirect back to dashboard
+            } else {
+                 showMessage("No valid transactions found in the pasted data.", 'error');
+            }
+        });
+        // --- End Import Form Submission ---
 
 
         window.onload = function () {
