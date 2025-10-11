@@ -430,23 +430,39 @@
                         <!-- Back Arrow -->
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     </button>
-                    <h2 class="text-xl font-extrabold text-gray-800">Set Monthly Budgets</h2>
+                    <h2 class="text-xl font-extrabold text-gray-800">Set Spending Budgets</h2>
                     <div class="w-8"></div> 
                 </header>
                 
                 <div class="primary-card p-6 mb-6">
-                    <p class="text-sm text-gray-600 mb-4">Set your maximum spending goal for any category for the current month. Budgets automatically reset monthly.</p>
+                    <p class="text-sm text-gray-600 mb-4">Set your maximum spending goal for any category across different time periods.</p>
                     
+                    <!-- Budget Period Selector (Day/Month/Year) -->
+                    <div class="grid grid-cols-3 gap-2 view-selector-group mb-6 justify-center text-gray-700 font-semibold">
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="budgetPeriod" value="Daily" class="hidden" onchange="updateBudgetPeriod('Daily')">
+                            <span id="budget-period-daily" class="block text-center py-2 px-1 text-sm rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white/10 text-gray-700">Daily</span>
+                        </label>
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="budgetPeriod" value="Monthly" checked class="hidden" onchange="updateBudgetPeriod('Monthly')">
+                            <span id="budget-period-monthly" class="block text-center py-2 px-1 text-sm rounded-lg cursor-pointer transition-colors duration-200 bg-blue-600 text-white">Monthly</span>
+                        </label>
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="budgetPeriod" value="Yearly" class="hidden" onchange="updateBudgetPeriod('Yearly')">
+                            <span id="budget-period-yearly" class="block text-center py-2 px-1 text-sm rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white/10 text-gray-700">Yearly</span>
+                        </label>
+                    </div>
+
                     <form id="budget-form" class="space-y-4">
                         <div>
                              <label for="budget-category" class="block text-sm font-medium text-gray-700">Category</label>
-                            <select id="budget-category"
+                            <select id="budget-category" onchange="loadBudgetForEdit(this.value)"
                                     class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
                                 <!-- Options populated dynamically by JS in init -->
                             </select>
                         </div>
                         <div>
-                             <label for="budget-amount" class="block text-sm font-medium text-gray-700">Monthly Budget Amount (₹)</label>
+                             <label for="budget-amount" class="block text-sm font-medium text-gray-700"><span id="budget-period-label">Monthly</span> Budget Amount (₹)</label>
                              <input type="number" id="budget-amount" placeholder="5000" step="1" min="0" required
                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
                         </div>
@@ -546,14 +562,16 @@
         // --- GLOBAL SETUP & LOCAL STORAGE INIT ---
 
         let transactions = [];
-        let monthlyBudgets = {}; // Stores {category: amount}
+        // Structure: { category: { period: amount, period: amount, ... } }
+        let budgets = {}; 
         let trendChart, breakdownChart, incomeChart; // Global Chart.js instances (Added incomeChart)
         let aggregatedData = null; // Global variable to store aggregated data
         let currentPeriod = 'month'; // Default period for analytics
+        let currentBudgetPeriod = 'Monthly'; // Default period for budget settings
         
         // Key for storing data in the browser's local storage
         const STORAGE_KEY = 'budgetTrackerTransactions'; 
-        const STORAGE_KEY_BUDGETS = 'budgetTrackerMonthlyBudgets'; 
+        const STORAGE_KEY_BUDGETS = 'budgetTrackerBudgets'; // Updated storage key for multi-period support
 
         // List of all possible categories (used to populate the filter)
         // Excluding income categories from expense budgets
@@ -605,16 +623,16 @@
         const loadBudgets = () => {
             try {
                 const storedData = localStorage.getItem(STORAGE_KEY_BUDGETS);
-                monthlyBudgets = storedData ? JSON.parse(storedData) : {};
+                budgets = storedData ? JSON.parse(storedData) : {};
             } catch (e) {
                 console.error("Error loading budgets from local storage:", e);
-                monthlyBudgets = {};
+                budgets = {};
             }
         };
 
         const saveBudgets = () => {
             try {
-                localStorage.setItem(STORAGE_KEY_BUDGETS, JSON.stringify(monthlyBudgets));
+                localStorage.setItem(STORAGE_KEY_BUDGETS, JSON.stringify(budgets));
                 renderBudgetProgress(); // Update the dashboard view
                 renderBudgetSettings(); // Update the settings list
             } catch (e) {
@@ -731,7 +749,22 @@
                 option.textContent = category;
                 filterElement.appendChild(option);
             });
+            
+            // Trigger load for the initially selected category
+            loadBudgetForEdit(filterElement.value); 
         };
+        
+        /**
+         * Loads existing budget amount and period into the input field for editing.
+         */
+        const loadBudgetForEdit = (category) => {
+            const amountInput = document.getElementById('budget-amount');
+            const periodSelector = document.querySelector(`input[name="budgetPeriod"]:checked`);
+            const period = periodSelector ? periodSelector.value : currentBudgetPeriod; // Use the currently selected period
+            
+            const budget = budgets[category]?.[period] || 0;
+            amountInput.value = budget;
+        }
 
 
         /**
@@ -741,58 +774,73 @@
             const listElement = document.getElementById('budget-progress-list');
             listElement.innerHTML = '';
             
-            const currentMonth = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit' });
+            // Calculate current period keys
+            const today = new Date();
+            const currentDayKey = today.toLocaleDateString('en-US'); // For daily check
+            const currentMonthKey = today.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit' });
+            const currentYearKey = today.getFullYear().toString();
             
-            // 1. Calculate current month's expense totals by category
-            const monthlyExpenses = transactions.reduce((acc, t) => {
+            // 1. Calculate current expense totals by category and period
+            const periodExpenses = transactions.reduce((acc, t) => {
                 if (t.type === 'expense' && t.timestamp && typeof t.timestamp.seconds === 'number') {
                     const date = new Date(t.timestamp.seconds * 1000);
-                    const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit' });
                     
-                    if (monthKey === currentMonth) {
-                         acc[t.category] = (acc[t.category] || 0) + Number(t.amount);
-                    }
+                    const dayKey = date.toLocaleDateString('en-US');
+                    const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit' });
+                    const yearKey = date.getFullYear().toString();
+
+                    acc[t.category] = acc[t.category] || {};
+                    acc[t.category]['Daily'] = (acc[t.category]['Daily'] || 0);
+                    acc[t.category]['Monthly'] = (acc[t.category]['Monthly'] || 0);
+                    acc[t.category]['Yearly'] = (acc[t.category]['Yearly'] || 0);
+
+                    if (dayKey === currentDayKey) acc[t.category]['Daily'] += Number(t.amount);
+                    if (monthKey === currentMonthKey) acc[t.category]['Monthly'] += Number(t.amount);
+                    if (yearKey === currentYearKey) acc[t.category]['Yearly'] += Number(t.amount);
                 }
                 return acc;
             }, {});
             
             let hasBudgets = false;
 
-            // 2. Render progress bar for each set budget
-            for (const category in monthlyBudgets) {
-                const limit = Number(monthlyBudgets[category]);
-                const spent = monthlyExpenses[category] || 0;
-                const percentage = limit > 0 ? Math.min(100, (spent / limit) * 100) : (spent > 0 ? 100 : 0);
+            // 2. Render progress bar for each set budget (only render monthly progress on dashboard)
+            for (const category in budgets) {
+                const limit = budgets[category]['Monthly'] ? Number(budgets[category]['Monthly']) : 0;
                 
-                let progressBarClass = 'bg-budget-green';
-                let statusText = 'On Track';
-                
-                if (percentage >= 100) {
-                    progressBarClass = 'bg-budget-red';
-                    statusText = 'Limit Exceeded!';
-                } else if (percentage >= 80) {
-                    progressBarClass = 'bg-budget-orange';
-                    statusText = 'Approaching Limit';
+                if (limit > 0) {
+                    const spent = periodExpenses[category]?.['Monthly'] || 0;
+                    const percentage = limit > 0 ? Math.min(100, (spent / limit) * 100) : (spent > 0 ? 100 : 0);
+                    
+                    let progressBarClass = 'bg-budget-green';
+                    let statusText = 'On Track';
+                    
+                    if (percentage >= 100) {
+                        progressBarClass = 'bg-budget-red';
+                        statusText = 'Limit Exceeded!';
+                    } else if (percentage >= 80) {
+                        progressBarClass = 'bg-budget-orange';
+                        statusText = 'Approaching Limit';
+                    }
+                    
+                    const remaining = limit - spent;
+                    const progressElement = document.createElement('div');
+                    progressElement.className = 'space-y-1';
+                    progressElement.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-semibold text-gray-800">${category} (Monthly)</span>
+                            <span class="text-xs font-medium ${progressBarClass.replace('bg-', 'text-')}">${statusText}</span>
+                        </div>
+                        <div class="flex justify-between items-end text-xs font-medium">
+                            <span class="text-gray-500">${formatCurrency(spent)} / ${formatCurrency(limit)}</span>
+                            <span class="${remaining < 0 ? 'text-red-600' : 'text-gray-600'}">${formatCurrency(Math.abs(remaining))} ${remaining < 0 ? 'Over' : 'Left'}</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="h-2.5 rounded-full ${progressBarClass} transition-all duration-500" style="width: ${percentage}%"></div>
+                        </div>
+                    `;
+                    listElement.appendChild(progressElement);
+                    hasBudgets = true;
                 }
-                
-                const remaining = limit - spent;
-                const progressElement = document.createElement('div');
-                progressElement.className = 'space-y-1';
-                progressElement.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm font-semibold text-gray-800">${category}</span>
-                        <span class="text-xs font-medium ${progressBarClass.replace('bg-', 'text-')}">${statusText}</span>
-                    </div>
-                    <div class="flex justify-between items-end text-xs font-medium">
-                        <span class="text-gray-500">${formatCurrency(spent)} / ${formatCurrency(limit)}</span>
-                        <span class="${remaining < 0 ? 'text-red-600' : 'text-gray-600'}">${formatCurrency(Math.abs(remaining))} ${remaining < 0 ? 'Over' : 'Left'}</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2.5">
-                        <div class="h-2.5 rounded-full ${progressBarClass} transition-all duration-500" style="width: ${percentage}%"></div>
-                    </div>
-                `;
-                listElement.appendChild(progressElement);
-                hasBudgets = true;
             }
             
             if (!hasBudgets) {
@@ -930,24 +978,37 @@
             listElement.innerHTML = '';
             
             let hasBudgets = false;
+            
+            // Loop through all categories that have at least one budget set
+            for (const category in budgets) {
+                const periodBudgets = budgets[category];
+                
+                // Loop through periods (Daily, Monthly, Yearly)
+                for (const period in periodBudgets) {
+                    const limit = Number(periodBudgets[period]);
 
-            for (const category in monthlyBudgets) {
-                const limit = Number(monthlyBudgets[category]);
-                if (limit > 0) {
-                    const budgetElement = document.createElement('div');
-                    budgetElement.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
-                    budgetElement.innerHTML = `
-                        <span class="font-semibold text-gray-800">${category}</span>
-                        <div class="flex items-center space-x-3">
-                            <span class="text-lg font-bold text-blue-600">${formatCurrency(limit)}</span>
-                            <button class="delete-budget-btn text-gray-400 hover:text-red-500 transition-colors duration-150 p-1 rounded"
-                                    data-category="${category}" title="Remove Budget">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </div>
-                    `;
-                    listElement.appendChild(budgetElement);
-                    hasBudgets = true;
+                    if (limit > 0) {
+                        const budgetElement = document.createElement('div');
+                        budgetElement.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+                        budgetElement.innerHTML = `
+                            <span class="font-semibold text-gray-800">${category} (${period})</span>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-lg font-bold text-blue-600">${formatCurrency(limit)}</span>
+                                
+                                <button class="edit-budget-btn text-gray-400 hover:text-blue-500 transition-colors duration-150 p-1 rounded"
+                                        data-category="${category}" data-period="${period}" title="Edit Budget">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                </button>
+
+                                <button class="delete-budget-btn text-gray-400 hover:text-red-500 transition-colors duration-150 p-1 rounded"
+                                        data-category="${category}" data-period="${period}" title="Remove Budget">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        `;
+                        listElement.appendChild(budgetElement);
+                        hasBudgets = true;
+                    }
                 }
             }
 
@@ -955,13 +1016,36 @@
                  listElement.innerHTML = '<p class="text-center text-gray-500 p-2">No budgets currently set.</p>';
             }
             
-            // Attach delete budget listeners
+            // Attach listeners
             listElement.querySelectorAll('.delete-budget-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const category = e.currentTarget.dataset.category;
-                    delete monthlyBudgets[category];
+                    const period = e.currentTarget.dataset.period;
+                    delete budgets[category][period];
+                    // Clean up category entry if no periods remain
+                    if (Object.keys(budgets[category]).length === 0) {
+                        delete budgets[category];
+                    }
                     saveBudgets();
-                    showMessage(`Budget for ${category} removed.`);
+                    showMessage(`Budget for ${category} (${period}) removed.`);
+                });
+            });
+
+            listElement.querySelectorAll('.edit-budget-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const category = e.currentTarget.dataset.category;
+                    const period = e.currentTarget.dataset.period;
+                    
+                    // 1. Select the correct category and period in the form selectors
+                    document.getElementById('budget-category').value = category;
+                    document.querySelector(`input[name="budgetPeriod"][value="${period}"]`).checked = true;
+                    
+                    // 2. Load the amount and update the period label
+                    updateBudgetPeriod(period); // Must call first to update currentBudgetPeriod and label
+                    loadBudgetForEdit(category);
+                    
+                    // 3. Scroll to the top of the form for immediate editing
+                    document.getElementById('budget-settings-view').scrollTo({ top: 0, behavior: 'smooth' });
                 });
             });
         };
@@ -1762,9 +1846,66 @@
                  renderCharts(aggregatedData);
             }
         };
+        
+        /**
+         * Updates the budget period selector's visual state and triggers a budget settings render/load.
+         */
+        const updateBudgetPeriod = (period) => {
+            currentBudgetPeriod = period;
+
+            // 1. Update the time period buttons' visual state
+            ['Daily', 'Monthly', 'Yearly'].forEach(val => {
+                const label = document.getElementById(`budget-period-${val.toLowerCase()}`);
+                if (!label) return; 
+                
+                if (val === period) {
+                    label.classList.add('bg-blue-600', 'text-white');
+                    label.classList.remove('hover:bg-white/10', 'text-gray-700');
+                } else {
+                    label.classList.remove('bg-blue-600', 'text-white');
+                    label.classList.add('hover:bg-white/10', 'text-gray-700');
+                }
+            });
+            
+            // 2. Update the label above the amount input
+            document.getElementById('budget-period-label').textContent = period;
+            
+            // 3. Load the corresponding budget amount for the currently selected category
+            const selectedCategory = document.getElementById('budget-category').value;
+            loadBudgetForEdit(selectedCategory);
+
+            // 4. Re-render the list to show all budgets
+            renderBudgetSettings(); 
+        };
 
 
         // --- LOCAL STORAGE LOGIC ---
+
+        const getCurrentSpending = (category, period) => {
+            const today = new Date();
+            let sum = 0;
+            
+            transactions.forEach(t => {
+                if (t.type === 'expense' && t.category === category && t.timestamp && typeof t.timestamp.seconds === 'number') {
+                    const tDate = new Date(t.timestamp.seconds * 1000);
+                    
+                    let isRelevant = false;
+
+                    if (period === 'Daily') {
+                        isRelevant = tDate.toDateString() === today.toDateString();
+                    } else if (period === 'Monthly') {
+                        isRelevant = tDate.getFullYear() === today.getFullYear() && tDate.getMonth() === today.getMonth();
+                    } else if (period === 'Yearly') {
+                        isRelevant = tDate.getFullYear() === today.getFullYear();
+                    }
+
+                    if (isRelevant) {
+                        sum += Number(t.amount);
+                    }
+                }
+            });
+            return sum;
+        }
 
         const addTransaction = (transactionData) => {
             const newId = Date.now().toString(); 
@@ -1803,9 +1944,41 @@
                 timestamp: { seconds: timestampSeconds }
             };
             
+            // --- BUDGET REMINDER CHECK (Only for expenses) ---
+            if (newTransaction.type === 'expense' && budgets[newTransaction.category]) {
+                const categoryBudgets = budgets[newTransaction.category];
+                const amount = newTransaction.amount;
+                let notificationMessage = null;
+
+                for (const period in categoryBudgets) {
+                    const limit = Number(categoryBudgets[period]);
+                    if (limit > 0) {
+                        // Calculate current spending for this period *before* adding the new transaction
+                        let spentThisPeriod = getCurrentSpending(newTransaction.category, period);
+                        const newTotal = spentThisPeriod + amount;
+                        
+                        if (newTotal > limit && spentThisPeriod <= limit) {
+                            // Budget just exceeded! Show urgent notification.
+                            const overAmount = formatCurrency(newTotal - limit);
+                            notificationMessage = `⚠️ ${period} Budget Exceeded! ${newTransaction.category} limit was ${formatCurrency(limit)}. You are now over by ${overAmount}.`;
+                            // Set the error message and break, prioritizing the most urgent (first found)
+                            break; 
+                        }
+                    }
+                }
+                
+                if (notificationMessage) {
+                    showMessage(notificationMessage, 'error');
+                }
+            }
+            // --- END BUDGET REMINDER CHECK ---
+
             transactions.push(newTransaction);
             saveTransactions();
-            showMessage("Transaction added successfully!");
+            // Show success message only if no error message was shown
+            if (!document.getElementById('message-box').classList.contains('bg-red-500')) {
+                showMessage("Transaction added successfully!");
+            }
         };
         
         /**
@@ -1894,16 +2067,21 @@
             
             const category = document.getElementById('budget-category').value;
             const amount = parseFloat(document.getElementById('budget-amount').value);
+            // Get the currently selected period from the radio buttons
+            const period = document.querySelector('input[name="budgetPeriod"]:checked').value; 
 
             if (category && !isNaN(amount) && amount >= 0) {
-                monthlyBudgets[category] = amount;
+                // Initialize category object if it doesn't exist
+                budgets[category] = budgets[category] || {};
+                // Set the budget for the specific period
+                budgets[category][period] = amount;
                 saveBudgets();
                 
                 // Reset form
                 document.getElementById('budget-amount').value = '';
                 document.getElementById('budget-category').selectedIndex = 0;
                 
-                showMessage(`Budget of ${formatCurrency(amount)} set for ${category}.`);
+                showMessage(`Budget of ${formatCurrency(amount)} set for ${category} (${period}).`);
             } else {
                 showMessage("Please enter a valid category and a non-negative amount.", 'error');
             }
@@ -1957,6 +2135,10 @@
             // Initial styling for transaction type selector
             document.querySelector('input[name="transactionType"][value="expense"]').checked = true;
             updateTypeSelector(document.querySelector('input[name="transactionType"][value="expense"]'));
+            
+            // Initial styling for budget period selector
+            document.querySelector('input[name="budgetPeriod"][value="Monthly"]').checked = true;
+            updateBudgetPeriod('Monthly');
 
             // Initial styling for navigation
             document.getElementById('nav-dashboard').classList.add('nav-button-active');
@@ -1973,6 +2155,8 @@
         window.updateTypeSelector = updateTypeSelector; // Expose the new function
         window.renderAllTransactions = renderAllTransactions; // Expose the filter function globally
         window.saveBudgets = saveBudgets; // Expose save budgets for general use
+        window.loadBudgetForEdit = loadBudgetForEdit; // Expose load budget for editing
+        window.updateBudgetPeriod = updateBudgetPeriod; // Expose new period function
     </script>
 </body>
 </html>
