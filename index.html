@@ -166,6 +166,40 @@
         .bg-budget-green { background-color: #059669; }
         .bg-budget-orange { background-color: #f59e0b; }
         .bg-budget-red { background-color: #dc2626; }
+        
+        /* Full-screen Modal for Budget Warning */
+        #budget-warning-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Dark semi-transparent background */
+            z-index: 60; /* Higher than message box */
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+        
+        #budget-warning-content {
+            max-width: 90%;
+            width: 400px;
+            background-color: white;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            transform: scale(0.95);
+            opacity: 0;
+            transition: all 0.3s ease-in-out;
+        }
+        
+        #budget-warning-modal.active #budget-warning-content {
+            transform: scale(1);
+            opacity: 1;
+        }
 
     </style>
 </head>
@@ -173,6 +207,30 @@
 
     <!-- Global Message Box for notifications (Replaces alert()) -->
     <div id="message-box" class="bg-green-500 text-white shadow-lg"></div>
+
+    <!-- BUDGET WARNING MODAL (NEW) -->
+    <div id="budget-warning-modal" class="">
+        <div id="budget-warning-content">
+            <svg class="w-16 h-16 text-yellow-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.772-1.333-2.68-1.333-3.452 0L2.268 16c-.772 1.333.194 3 1.732 3z"></path></svg>
+            <h3 class="text-2xl font-extrabold text-gray-800 mb-2">Budget Limit Warning!</h3>
+            <p id="warning-message-text" class="text-lg text-gray-600 mb-6 font-medium">
+                The Food (Monthly) budget has reached 95% of its ₹5,000 limit.
+            </p>
+            
+            <div class="space-y-3">
+                <button id="modal-edit-budget-btn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl transition duration-150 shadow-md shadow-blue-500/50">
+                    <span class="flex items-center justify-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-5L19 3m0 0l-5 5m5-5v5m0-5h5"></path></svg>
+                        <span>EDIT BUDGET</span>
+                    </span>
+                </button>
+                <button onclick="closeBudgetWarning()" class="w-full py-3 text-gray-600 hover:text-gray-900 font-semibold rounded-xl transition duration-150 border border-gray-300">
+                    CONTINUE (Ignore for Now)
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- END BUDGET WARNING MODAL -->
 
 
     <!-- Main Application Frame (Simulates Mobile Screen) -->
@@ -622,6 +680,61 @@
                 box.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', 'text-gray-800');
             }, 3000);
         };
+
+        // --- Budget Warning Modal Functions ---
+        const closeBudgetWarning = () => {
+            document.getElementById('budget-warning-modal').classList.remove('active');
+            document.getElementById('budget-warning-modal').style.display = 'none';
+        };
+
+        const showBudgetWarning = (category, period, limit, spent, percentage) => {
+            const modal = document.getElementById('budget-warning-modal');
+            const messageText = document.getElementById('warning-message-text');
+            const editBtn = document.getElementById('modal-edit-budget-btn');
+            
+            messageText.innerHTML = `
+                The **${category} (${period})** budget has reached **${Math.round(percentage)}%** of its limit of **${formatCurrency(limit)}**.
+                <br><br>
+                Current Spent: ${formatCurrency(spent)}
+            `;
+            
+            // Set data attributes on the edit button for later use
+            editBtn.dataset.category = category;
+            editBtn.dataset.period = period;
+            
+            // Attach temporary listener to the edit button (ensuring it only fires once)
+            editBtn.onclick = () => {
+                // Navigate to budget settings, passing context to pre-select the period/category
+                navigateToBudgetSettings(category, period);
+            };
+
+            modal.style.display = 'flex';
+            // Use setTimeout to trigger the CSS transition for the impressive effect
+            setTimeout(() => modal.classList.add('active'), 10); 
+        };
+        
+        const navigateToBudgetSettings = (category, period) => {
+            closeBudgetWarning();
+            
+            // Set the view to budget settings
+            showView('budget-settings'); 
+            
+            // Wait briefly for the new view to load before updating form elements
+            setTimeout(() => {
+                // 1. Select the correct category and period in the form selectors
+                document.getElementById('budget-category').value = category;
+                const periodRadio = document.querySelector(`input[name="budgetPeriod"][value="${period}"]`);
+                if (periodRadio) periodRadio.checked = true;
+                
+                // 2. Load the budget details into the form inputs
+                updateBudgetPeriod(period); // This handles loading the amount and period label
+                
+                // 3. Scroll to the top of the form
+                document.getElementById('budget-settings-view').scrollTo({ top: 0, behavior: 'smooth' });
+            }, 50); // Small delay to ensure DOM is ready
+        }
+        // --- End Budget Warning Modal Functions ---
+
 
         // --- Budget Storage Functions ---
         const loadBudgets = () => {
@@ -1878,14 +1991,13 @@
             
             // --- BUDGET REMINDER CHECK (Only for expenses) ---
             let budgetExceeded = false;
-            let budgetWarning = false;
-            let notificationMessage = null;
-
+            let budgetWarningDetails = null; // Stores { category, period, limit, spent, percentage } for modal
+            
             if (newTransaction.type === 'expense' && budgets[newTransaction.category]) {
                 const categoryBudgets = budgets[newTransaction.category];
                 const amount = newTransaction.amount;
 
-                // Check Daily, Monthly, then Yearly, and prioritize the first exceeded budget found
+                // Check Daily, Monthly, then Yearly, and prioritize the first breached budget found
                 const periodsToCheck = ['Daily', 'Monthly', 'Yearly'];
 
                 for (const period of periodsToCheck) {
@@ -1899,34 +2011,40 @@
                         if (newTotal > limit && spentThisPeriod <= limit) {
                             // 1. Budget just exceeded (100% +)
                             const overAmount = formatCurrency(newTotal - limit);
-                            notificationMessage = `⚠️ ${period} Budget Exceeded! ${newTransaction.category} limit was ${formatCurrency(limit)}. You are now over by ${overAmount}.`;
+                            showMessage(`⚠️ ${period} Budget Exceeded! ${newTransaction.category} limit was ${formatCurrency(limit)}. You are now over by ${overAmount}.`, 'error');
                             budgetExceeded = true;
                             break; 
-                        } else if (percentage >= 90 && spentThisPeriod / limit < 0.9) {
+                        } else if (newTotal >= 0.9 * limit && spentThisPeriod < 0.9 * limit) {
                             // 2. Budget just crossed the 90% warning threshold (90% to 100%)
-                            notificationMessage = `🔔 ${period} Budget Warning: ${newTransaction.category} has reached ${Math.round(percentage)}% of its limit!`;
-                            budgetWarning = true;
+                            budgetWarningDetails = {
+                                category: newTransaction.category,
+                                period: period,
+                                limit: limit,
+                                spent: newTotal,
+                                percentage: percentage
+                            };
                             // Do not break here, continue checking for a full exceedance
                         }
                     }
                 }
             }
             
-            if (budgetExceeded) {
-                // Priority 1: Full exceedance (Red)
-                showMessage(notificationMessage, 'error'); 
-            } else if (budgetWarning) {
-                // Priority 2: 90% warning (Orange)
-                 showMessage(notificationMessage, 'warning'); 
-            }
-            // --- END BUDGET REMINDER CHECK ---
-
             transactions.push(newTransaction);
             saveTransactions();
             
-            // Show success message only if no error or warning message was shown
-            if (!budgetExceeded && !budgetWarning) {
-                showMessage("Transaction added successfully!");
+            // Priority Check: If budget exceeded, the red message is already shown.
+            if (budgetExceeded) {
+                // No need to show success message if a critical error is shown
+                return; 
+            } 
+            
+            // Priority Check 2: If budget warning, show the full-screen modal
+            if (budgetWarningDetails) {
+                 const { category, period, limit, spent, percentage } = budgetWarningDetails;
+                 showBudgetWarning(category, period, limit, spent, percentage); 
+            } else {
+                 // Show success message only if no error or warning message was shown
+                 showMessage("Transaction added successfully!", 'success');
             }
         };
         
@@ -2198,6 +2316,7 @@
         window.loadBudgetForEdit = loadBudgetForEdit; // Expose load budget for editing
         window.updateBudgetPeriod = updateBudgetPeriod; // Expose new period function
         window.renderBudgetSettings = renderBudgetSettings; // FIX: Expose renderBudgetSettings globally
+        window.closeBudgetWarning = closeBudgetWarning; // Expose modal close function
     </script>
 </body>
 </html>
