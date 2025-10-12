@@ -57,13 +57,7 @@ Ideal for users who want a lightweight, private, offline-capable app to understa
 
 ---
 
-Example:
-
-| Dashboard | Transaction List |
-|---|---|
-| ![dashboard mockup](path/to/dashboard.png) | ![transactions mockup](path/to/transactions.png) |
-
-> Or link to live demo: [bramhendra-c.github.io/Budget_Tracker](https://bramhendra-c.github.io/Budget_Tracker)
+link to live demo: [bramhendra-c.github.io/Budget_Tracker](https://bramhendra-c.github.io/Budget_Tracker)
 
 ---
 
