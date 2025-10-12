@@ -221,9 +221,10 @@
     <!-- Global Message Box for notifications (Replaces alert()) -->
     <div id="message-box" class="bg-green-500 text-white shadow-lg"></div>
 
-    <!-- BUDGET WARNING MODAL (NEW) -->
+    <!-- BUDGET WARNING MODAL (NEW/REUSED) -->
     <div id="budget-warning-modal" class="">
         <div id="budget-warning-content">
+            <!-- Icon is dynamically changed by JS -->
             <svg class="w-16 h-16 text-yellow-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.772-1.333-2.68-1.333-3.452 0L2.268 16c-.772 1.333.194 3 1.732 3z"></path></svg>
             <h3 class="text-2xl font-extrabold text-gray-800 mb-2">Budget Limit Warning!</h3>
             <p id="warning-message-text" class="text-lg text-gray-600 mb-6 font-medium">
@@ -231,6 +232,7 @@
             </p>
             
             <div class="space-y-3">
+                <!-- Button text and action dynamically changed by JS -->
                 <button id="modal-edit-budget-btn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl transition duration-150 shadow-md shadow-blue-500/50">
                     <span class="flex items-center justify-center space-x-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-5L19 3m0 0l-5 5m5-5v5m0-5h5"></path></svg>
@@ -289,42 +291,6 @@
                     </div>
                 </div>
                 
-                <!-- Budget Progress Section (NEW) -->
-                <div class="primary-card p-6 mb-8">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-gray-800">Current Budget Progress</h2>
-                        <button onclick="showView('budget-settings')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">Set/Edit Budgets</button>
-                    </div>
-                    
-                    <div id="budget-progress-list" class="space-y-4">
-                        <p class="text-center text-gray-500 text-sm">No budgets set. Click 'Set/Edit Budgets' to start tracking goals!</p>
-                    </div>
-                </div>
-                
-                 <!-- Active Recurring Rules on Dashboard (NEW) -->
-                <div class="primary-card p-6 mb-8">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-gray-800">Active Recurring</h2>
-                        <button onclick="showView('recurring')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">Manage</button>
-                    </div>
-                    <div id="active-recurring-dashboard-list" class="space-y-3">
-                         <p class="text-center text-gray-500 text-sm">Loading recurring schedules...</p>
-                    </div>
-                </div>
-                <!-- END Active Recurring Rules on Dashboard -->
-
-                <!-- Savings Goals on Dashboard (NEW) -->
-                <div class="primary-card p-6 mb-8">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-gray-800">Savings Goals</h2>
-                        <button onclick="showView('goals')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">View All</button>
-                    </div>
-                    <div id="active-goals-dashboard-list" class="space-y-4">
-                         <p class="text-center text-gray-500 text-sm">Loading goals...</p>
-                    </div>
-                </div>
-                <!-- END Savings Goals on Dashboard -->
-
                 <!-- Add New Transaction Form (Quick Add section) -->
                 <div class="primary-card p-6 mb-8">
                     <div class="flex justify-between items-center mb-6">
@@ -427,6 +393,43 @@
                         <p id="loading-message" class="text-center text-gray-500 p-4">Loading transactions...</p>
                     </div>
                 </div>
+                
+                <!-- Budget Progress Section (MOVED HERE) -->
+                <div class="primary-card p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Current Budget Progress</h2>
+                        <button onclick="showView('budget-settings')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">Set/Edit Budgets</button>
+                    </div>
+                    
+                    <div id="budget-progress-list" class="space-y-4">
+                        <p class="text-center text-gray-500 text-sm">No budgets set. Click 'Set/Edit Budgets' to start tracking goals!</p>
+                    </div>
+                </div>
+                
+                 <!-- Active Recurring Rules on Dashboard (MOVED HERE) -->
+                <div class="primary-card p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Active Recurring</h2>
+                        <button onclick="showView('recurring')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">Manage</button>
+                    </div>
+                    <div id="active-recurring-dashboard-list" class="space-y-3">
+                         <p class="text-center text-gray-500 text-sm">Loading recurring schedules...</p>
+                    </div>
+                </div>
+                <!-- END Active Recurring Rules on Dashboard -->
+
+                <!-- Savings Goals on Dashboard (MOVED HERE) -->
+                <div class="primary-card p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Savings Goals</h2>
+                        <button onclick="showView('goals')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">View All</button>
+                    </div>
+                    <div id="active-goals-dashboard-list" class="space-y-4">
+                         <p class="text-center text-gray-500 text-sm">Loading goals...</p>
+                    </div>
+                </div>
+                <!-- END Savings Goals on Dashboard -->
+
             </div>
             <!-- END DASHBOARD VIEW -->
 
@@ -900,6 +903,7 @@
                 localStorage.setItem(STORAGE_KEY_GOALS, JSON.stringify(goals));
                 renderGoalsProgress(); // Existing call for the Goals view
                 renderActiveGoalsDashboard(); // ADDED CALL for dashboard update
+                checkGoalReminders(); // NEW CALL
             } catch (e) {
                 console.error("Error saving goals.", 'error');
                 showMessage("Error saving goals.", 'error');
@@ -935,6 +939,7 @@
                 renderBudgetProgress();
                 renderActiveRecurringRules(); 
                 renderActiveGoalsDashboard(); // ADDED CALL
+                checkGoalReminders(); // NEW CALL
                 
                 // Only render charts/lists if their view is currently visible
                 if (!document.getElementById('analytics-view').classList.contains('hidden')) {
@@ -992,7 +997,144 @@
             }, 3000);
         };
         
-        // --- Recurring Transaction Logic ---
+        // --- Goal Reminder Modal Logic (NEW) ---
+
+        // Helper function to dynamically reset the modal's styling/content for reuse
+        const resetModalStyle = () => {
+            const modalContent = document.getElementById('budget-warning-content');
+            const svg = modalContent.querySelector('svg');
+            const h3 = modalContent.querySelector('h3');
+            const editBtn = document.getElementById('modal-edit-budget-btn');
+            
+            // Reset Icon/Color to default Budget Warning
+            svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.772-1.333-2.68-1.333-3.452 0L2.268 16c-.772 1.333.194 3 1.732 3z"></path>';
+            svg.classList.remove('text-blue-500', 'text-red-500');
+            svg.classList.add('text-yellow-500');
+            h3.textContent = 'Budget Limit Warning!';
+            
+            // Reset edit button text to default (Budget)
+            editBtn.innerHTML = `
+                <span class="flex items-center justify-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-5L19 3m0 0l-5 5m5-5v5m0-5h5"></path></svg>
+                    <span>EDIT BUDGET</span>
+                </span>
+            `;
+            
+            // Reset secondary button text
+            document.querySelector('#budget-warning-content button:last-child').textContent = 'CONTINUE (Ignore for Now)';
+        }
+
+        const closeBudgetWarning = () => {
+            document.getElementById('budget-warning-modal').classList.remove('active');
+            document.getElementById('budget-warning-modal').style.display = 'none';
+            resetModalStyle(); // Reset state upon closing
+        };
+
+        const showGoalReminder = (goal, daysLeft) => {
+            resetModalStyle(); // Always reset first
+
+            const modal = document.getElementById('budget-warning-modal');
+            const messageText = document.getElementById('warning-message-text');
+            const modalContent = document.getElementById('budget-warning-content');
+            const svg = modalContent.querySelector('svg');
+            const h3 = modalContent.querySelector('h3');
+            const editBtn = document.getElementById('modal-edit-budget-btn');
+
+            // 1. Set Goal Context (use the same modal structure)
+            h3.textContent = 'Goal Deadline Alert!';
+            svg.classList.remove('text-yellow-500');
+            svg.classList.add('text-blue-500'); // Blue for goal motivation
+            svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6m4 0a1 1 0 100-2 1 1 0 000 2zm0 0l-1.558-.871a2 2 0 00-1.884 0L2 19h10zm7 0a1 1 0 100-2 1 1 0 000 2zm0 0l-1.558-.871a2 2 0 00-1.884 0L17 19h10zM12 4v16m-4-8h8"></path>'; // Goal Icon
+            
+            const statusText = daysLeft === 0 ? 'DUE TODAY' : `${daysLeft} DAYS LEFT`;
+            const progress = (goal.currentAmount / goal.targetAmount) * 100;
+            
+            messageText.innerHTML = `
+                Your goal **${goal.name}** is **${statusText}**!
+                <br><br>
+                Current Progress: **${Math.round(progress)}%**
+                <br>
+                Amount Remaining: ${formatCurrency(goal.targetAmount - goal.currentAmount)}
+            `;
+
+            // 2. Set Button Actions
+            editBtn.innerHTML = `
+                <span class="flex items-center justify-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-5L19 3m0 0l-5 5m5-5v5m0-5h5"></path></svg>
+                    <span>VIEW GOAL</span>
+                </span>
+            `;
+            editBtn.onclick = () => {
+                closeBudgetWarning();
+                showView('goals');
+            };
+            document.querySelector('#budget-warning-content button:last-child').textContent = 'ACKNOWLEDGE'; // Change button text
+
+            // 3. Show Modal
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+        };
+
+
+        // New function to check for imminent goal target dates
+        const checkGoalReminders = () => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Prevent showing the reminder repeatedly if the modal is already active
+            if (document.getElementById('budget-warning-modal').classList.contains('active')) {
+                 return;
+            }
+            
+            for (const goal of goals) {
+                if (goal.targetDate && goal.currentAmount < goal.targetAmount) {
+                    const targetDate = new Date(goal.targetDate);
+                    targetDate.setHours(0, 0, 0, 0); 
+
+                    const diffTime = targetDate.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    // Check if the goal is due today or within the next 5 days
+                    if (diffDays >= 0 && diffDays <= 5) {
+                        showGoalReminder(goal, diffDays);
+                        return; // Stop and show the first applicable reminder
+                    }
+                }
+            }
+        };
+        // --- End Goal Reminder Modal Logic ---
+
+        const showBudgetWarning = (category, period, limit, spent, percentage) => {
+            resetModalStyle(); // Always reset first
+
+            const modal = document.getElementById('budget-warning-modal');
+            const messageText = document.getElementById('warning-message-text');
+            const editBtn = document.getElementById('modal-edit-budget-btn');
+            
+            // Re-set context for Budget Warning
+            document.querySelector('#budget-warning-content h3').textContent = 'Budget Limit Warning!';
+
+            messageText.innerHTML = `
+                The **${category} (${period})** budget has reached **${Math.round(percentage)}%** of its limit of **${formatCurrency(limit)}**.
+                <br><br>
+                Current Spent: ${formatCurrency(spent)}
+            `;
+            
+            // Set data attributes on the edit button for later use
+            editBtn.dataset.category = category;
+            editBtn.dataset.period = period;
+            
+            // Attach temporary listener to the edit button
+            editBtn.onclick = () => {
+                navigateToBudgetSettings(category, period);
+            };
+
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10); 
+        };
+
+        // ... rest of the code remains the same ...
+        // --- Recurring Transaction Logic (unchanged from previous step) ---
         
         const getNextRecurrenceDate = (rule, startDate) => {
              const lastDate = new Date(startDate);
@@ -1234,7 +1376,7 @@
         // --- End Recurring Transaction Logic ---
 
 
-        // --- Goal Logic (NEW) ---
+        // --- Goal Logic ---
         
         /**
          * Renders a summary of active goals on the dashboard.
@@ -1401,61 +1543,6 @@
         // --- End Goal Logic ---
 
 
-        // --- Budget Warning Modal Functions ---
-        const closeBudgetWarning = () => {
-            document.getElementById('budget-warning-modal').classList.remove('active');
-            document.getElementById('budget-warning-modal').style.display = 'none';
-        };
-
-        const showBudgetWarning = (category, period, limit, spent, percentage) => {
-            const modal = document.getElementById('budget-warning-modal');
-            const messageText = document.getElementById('warning-message-text');
-            const editBtn = document.getElementById('modal-edit-budget-btn');
-            
-            messageText.innerHTML = `
-                The **${category} (${period})** budget has reached **${Math.round(percentage)}%** of its limit of **${formatCurrency(limit)}**.
-                <br><br>
-                Current Spent: ${formatCurrency(spent)}
-            `;
-            
-            // Set data attributes on the edit button for later use
-            editBtn.dataset.category = category;
-            editBtn.dataset.period = period;
-            
-            // Attach temporary listener to the edit button (ensuring it only fires once)
-            editBtn.onclick = () => {
-                // Navigate to budget settings, passing context to pre-select the period/category
-                navigateToBudgetSettings(category, period);
-            };
-
-            modal.style.display = 'flex';
-            // Use setTimeout to trigger the CSS transition for the impressive effect
-            setTimeout(() => modal.classList.add('active'), 10); 
-        };
-        
-        const navigateToBudgetSettings = (category, period) => {
-            closeBudgetWarning();
-            
-            // Set the view to budget settings
-            showView('budget-settings'); 
-            
-            // Wait briefly for the new view to load before updating form elements
-            setTimeout(() => {
-                // 1. Select the correct category and period in the form selectors
-                document.getElementById('budget-category').value = category;
-                const periodRadio = document.querySelector(`input[name="budgetPeriod"][value="${period}"]`);
-                if (periodRadio) periodRadio.checked = true;
-                
-                // 2. Load the budget details into the form inputs
-                updateBudgetPeriod(period); // This handles loading the amount and period label
-                
-                // 3. Scroll to the top of the form
-                document.getElementById('budget-settings-view').scrollTo({ top: 0, behavior: 'smooth' });
-            }, 50); // Small delay to ensure DOM is ready
-        }
-        // --- End Budget Warning Modal Functions ---
-
-
         /**
          * Initializes the application data in local storage mode.
          */
@@ -1477,12 +1564,15 @@
             // Time input is left blank to allow user to set it.
             document.getElementById('time').value = '';
 
-            saveTransactions(); // Initial rendering of summary and recents
+            saveTransactions(); // Initial rendering of summary and recents, and checks reminders
             populateCategoryFilter(); // Populate the transaction filter options
             populateBudgetCategoryFilter(); // Populate the budget setting options
             populateRecurringCategoryFilter(); // NEW: Populate recurring category options
         };
 
+        // ... rest of the code remains the same ...
+        // ... (All other helper functions: populateCategoryFilter, updateTrendChart, etc.) ...
+        
         /**
          * Populates the category filter dropdown in the full list view and recurring form.
          */
