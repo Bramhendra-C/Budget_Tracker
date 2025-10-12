@@ -80,7 +80,7 @@
         }
 
         /* Input & Select Styling for dropdown indicator */
-        select#category, input[type="date"], select#category-filter, input[type="time"] {
+        select#category, input[type="date"], select#category-filter, input[type="time"], select#recurring-frequency, select#recurring-day-of-month {
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
@@ -200,6 +200,19 @@
             transform: scale(1);
             opacity: 1;
         }
+        
+        /* Recurring List Item Styling */
+        .recurring-item {
+             border-left: 5px solid #2563eb;
+             background-color: #f8fafc;
+             border-radius: 0.75rem;
+             transition: all 0.15s ease-in-out;
+             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .recurring-item:hover {
+             background-color: #f0f4ff;
+             box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+        }
 
     </style>
 </head>
@@ -264,10 +277,10 @@
                             <h3 class="text-sm font-medium text-gray-500 mb-1">Total Income</h3>
                             <p id="income" class="text-xl font-bold income-text">₹0.00</p>
                         </div>
-                         <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8v2m0 4v2m-6 3h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                           <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8v2m0 4v2m-6 3h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                     </div>
                     <div class="small-card p-4 border-l-4 border-red-500 flex items-center justify-between">
-                         <div>
+                           <div>
                             <h3 class="text-sm font-medium text-gray-500 mb-1">Total Expense</h3>
                             <!-- Expense text color is now RED -->
                             <p id="expense" class="text-xl font-bold expense-text">₹0.00</p>
@@ -284,15 +297,39 @@
                     </div>
                     
                     <div id="budget-progress-list" class="space-y-4">
-                         <p class="text-center text-gray-500 text-sm">No budgets set. Click 'Set/Edit Budgets' to start tracking goals!</p>
+                        <p class="text-center text-gray-500 text-sm">No budgets set. Click 'Set/Edit Budgets' to start tracking goals!</p>
                     </div>
                 </div>
+                
+                 <!-- Active Recurring Rules on Dashboard (NEW) -->
+                <div class="primary-card p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Active Recurring</h2>
+                        <button onclick="showView('recurring')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">Manage</button>
+                    </div>
+                    <div id="active-recurring-dashboard-list" class="space-y-3">
+                         <p class="text-center text-gray-500 text-sm">Loading recurring schedules...</p>
+                    </div>
+                </div>
+                <!-- END Active Recurring Rules on Dashboard -->
+
+                <!-- Savings Goals on Dashboard (NEW) -->
+                <div class="primary-card p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Savings Goals</h2>
+                        <button onclick="showView('goals')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">View All</button>
+                    </div>
+                    <div id="active-goals-dashboard-list" class="space-y-4">
+                         <p class="text-center text-gray-500 text-sm">Loading goals...</p>
+                    </div>
+                </div>
+                <!-- END Savings Goals on Dashboard -->
 
                 <!-- Add New Transaction Form (Quick Add section) -->
                 <div class="primary-card p-6 mb-8">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-xl font-bold text-gray-800">Quick Add Transaction</h2>
-                         <button onclick="showView('import-transactions')" class="text-xs text-gray-500 font-medium hover:text-blue-600 transition-colors">
+                        <button onclick="showView('import-transactions')" class="text-xs text-gray-500 font-medium hover:text-blue-600 transition-colors">
                             <span class="flex items-center space-x-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v-1a4 4 0 014-4h8m-12 1h12m-6-8l-4 4 4 4"></path></svg>
                                 <span>Import</span>
@@ -308,7 +345,7 @@
                             <div class="flex items-center justify-center space-x-1 mt-1">
                                 <span class="text-4xl font-extrabold text-gray-700">₹</span>
                                 <input type="number" id="amount" placeholder="0.00" step="0.01" required
-                                       class="text-5xl font-extrabold text-gray-900 border-b-2 border-gray-200 focus:border-blue-600 w-2/3 text-center p-0 appearance-none focus:outline-none bg-transparent transition-colors duration-200">
+                                        class="text-5xl font-extrabold text-gray-900 border-b-2 border-gray-200 focus:border-blue-600 w-2/3 text-center p-0 appearance-none focus:outline-none bg-transparent transition-colors duration-200">
                             </div>
                         </div>
 
@@ -336,7 +373,7 @@
                             <div>
                                 <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
                                 <input type="text" id="description" placeholder="e.g., Groceries, Paycheck, Rent" required
-                                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
                             </div>
                             
                             <div class="grid grid-cols-3 gap-4">
@@ -344,13 +381,13 @@
                                 <div class="col-span-2">
                                     <label for="date" class="block text-sm font-medium text-gray-700">Date (Optional)</label>
                                     <input type="date" id="date" 
-                                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
                                 </div>
                                 <!-- Time (NEW FIELD) -->
                                 <div>
                                     <label for="time" class="block text-sm font-medium text-gray-700">Time</label>
                                     <input type="time" id="time" 
-                                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
                                 </div>
                             </div>
                             <!-- Category -->
@@ -381,8 +418,8 @@
                 <!-- Transaction History (Limited View) -->
                 <div class="primary-card p-6">
                     <div class="flex justify-between items-center mb-4">
-                         <h2 class="text-2xl font-bold text-gray-800">Recent Transactions</h2>
-                         <button onclick="showView('list')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">View All</button>
+                           <h2 class="text-2xl font-bold text-gray-800">Recent Transactions</h2>
+                           <button onclick="showView('list')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">View All</button>
                     </div>
 
                     <div id="transaction-list-dashboard" class="max-h-[50vh] space-y-3">
@@ -445,12 +482,12 @@
                     <h2 class="text-xl font-bold text-gray-900 mb-4">Expense Breakdown</h2>
                     <p class="text-sm text-gray-500 mb-4">Expenses by category for the selected period.</p>
                     <div class="relative h-80 w-full flex justify-center items-center p-2 rounded-xl border border-gray-200 shadow-inner">
-                         <canvas id="categoryBreakdownChart" class="max-h-80"></canvas>
-                         <!-- Center Text for Expense Breakdown (Now invisible and empty) -->
-                         <div id="breakdown-center-text" class="absolute flex flex-col items-center justify-center text-center hidden">
-                            <p class="text-base font-semibold text-gray-600">Total %</p>
-                            <p id="breakdown-center-percentage" class="text-3xl font-extrabold text-red-600 mt-1">100%</p>
-                         </div>
+                           <canvas id="categoryBreakdownChart" class="max-h-80"></canvas>
+                           <!-- Center Text for Expense Breakdown (Now invisible and empty) -->
+                           <div id="breakdown-center-text" class="absolute flex flex-col items-center justify-center text-center hidden">
+                                <p class="text-base font-semibold text-gray-600">Total %</p>
+                                <p id="breakdown-center-percentage" class="text-3xl font-extrabold text-red-600 mt-1">100%</p>
+                           </div>
                     </div>
                     <!-- Total Expense Display below the chart -->
                     <div class="mt-6 pt-4 border-t border-gray-100 text-center">
@@ -465,12 +502,12 @@
                     <h2 class="text-xl font-bold text-gray-900 mb-4">Income Breakdown</h2>
                     <p class="text-sm text-gray-500 mb-4">Income by category for the selected period.</p>
                     <div class="relative h-80 w-full flex justify-center items-center p-2 rounded-xl border border-gray-200 shadow-inner">
-                         <canvas id="incomeBreakdownChart" class="max-h-80"></canvas>
-                          <!-- Center Text for Income Breakdown (Now invisible and empty) -->
-                         <div id="income-center-text" class="absolute flex flex-col items-center justify-center text-center hidden">
-                            <p class="text-base font-semibold text-gray-600">Total %</p>
-                            <p id="income-center-percentage" class="text-3xl font-extrabold text-emerald-600 mt-1">100%</p>
-                         </div>
+                           <canvas id="incomeBreakdownChart" class="max-h-80"></canvas>
+                            <!-- Center Text for Income Breakdown (Now invisible and empty) -->
+                           <div id="income-center-text" class="absolute flex flex-col items-center justify-center text-center hidden">
+                                <p class="text-base font-semibold text-gray-600">Total %</p>
+                                <p id="income-center-percentage" class="text-3xl font-extrabold text-emerald-600 mt-1">100%</p>
+                           </div>
                     </div>
                     <!-- Total Income Display below the chart -->
                     <div class="mt-6 pt-4 border-t border-gray-100 text-center">
@@ -483,7 +520,7 @@
             
             <!-- BUDGET SETTINGS VIEW (NEW) -->
             <div id="budget-settings-view" class="hidden">
-                 <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
+                   <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
                     <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
                         <!-- Back Arrow -->
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -513,16 +550,16 @@
 
                     <form id="budget-form" class="space-y-4">
                         <div>
-                             <label for="budget-category" class="block text-sm font-medium text-gray-700">Category</label>
+                               <label for="budget-category" class="block text-sm font-medium text-gray-700">Category</label>
                             <select id="budget-category" onchange="loadBudgetForEdit(this.value)"
-                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
                                 <!-- Options populated dynamically by JS in init -->
                             </select>
                         </div>
                         <div>
-                             <label for="budget-amount" class="block text-sm font-medium text-gray-700"><span id="budget-period-label">Monthly</span> Budget Amount (₹)</label>
-                             <input type="number" id="budget-amount" placeholder="5000" step="1" min="0" required
-                                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                               <label for="budget-amount" class="block text-sm font-medium text-gray-700"><span id="budget-period-label">Monthly</span> Budget Amount (₹)</label>
+                               <input type="number" id="budget-amount" placeholder="5000" step="1" min="0" required
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition duration-150">
                             SAVE BUDGET
@@ -539,9 +576,147 @@
             </div>
             <!-- END BUDGET SETTINGS VIEW -->
             
+            <!-- RECURRING TRANSACTIONS VIEW (UPDATED) -->
+            <div id="recurring-transactions-view" class="hidden">
+                <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
+                    <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 class="text-xl font-extrabold text-gray-800">Recurring Schedules</h2>
+                    <div class="w-8"></div> 
+                </header>
+
+                <div class="primary-card p-6 mb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Add New Recurring Transaction</h3>
+                    
+                    <form id="recurring-form" class="space-y-4">
+                        <div class="flex space-x-2 p-1 bg-gray-100 rounded-xl justify-center text-sm font-medium">
+                            <label class="flex-1 type-selector">
+                                <input type="radio" name="recurringType" value="expense" checked class="hidden">
+                                <span class="block text-center py-2 px-3 rounded-xl cursor-pointer transition-all duration-200 bg-red-600 text-white shadow-lg shadow-red-500/30">
+                                    <span class="font-extrabold">- EXPENSE</span>
+                                </span>
+                            </label>
+                            <label class="flex-1 type-selector">
+                                <input type="radio" name="recurringType" value="income" class="hidden">
+                                <span class="block text-center py-2 px-3 rounded-xl cursor-pointer transition-all duration-200 text-gray-700 hover:bg-white">
+                                    <span class="font-extrabold">+ INCOME</span>
+                                </span>
+                            </label>
+                        </div>
+                        
+                        <div>
+                            <label for="recurring-description" class="block text-sm font-medium text-gray-700">Description</label>
+                            <input type="text" id="recurring-description" placeholder="e.g., Salary, Monthly Rent" required
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="recurring-amount" class="block text-sm font-medium text-gray-700">Amount (₹)</label>
+                                <input type="number" id="recurring-amount" placeholder="5000" step="1" min="0" required
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="recurring-category" class="block text-sm font-medium text-gray-700">Category</label>
+                                <select id="recurring-category" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                    <!-- Options populated dynamically by JS -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="recurring-frequency" class="block text-sm font-medium text-gray-700">Frequency</label>
+                            <select id="recurring-frequency" onchange="toggleRecurringDayInput(this.value)" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                <option value="Monthly">Monthly</option>
+                                <option value="Weekly">Weekly</option>
+                                <option value="Yearly">Yearly</option>
+                                <option value="Daily">Daily</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Dynamic Day/Date Input -->
+                        <div id="recurring-day-input-monthly">
+                            <label for="recurring-day-of-month" class="block text-sm font-medium text-gray-700">Day of the Month (1-28)</label>
+                            <input type="number" id="recurring-day-of-month" placeholder="1" min="1" max="28" value="1"
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div id="recurring-day-input-weekly" class="hidden">
+                             <label for="recurring-day-of-week" class="block text-sm font-medium text-gray-700">Day of the Week</label>
+                             <select id="recurring-day-of-week" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition duration-150 shadow-md shadow-green-500/30">
+                            SAVE RECURRING RULE
+                        </button>
+                    </form>
+                </div>
+
+                <div class="primary-card p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Active Recurring Rules</h3>
+                    <div id="active-recurring-list" class="space-y-3">
+                         <p class="text-center text-gray-500 p-2">No recurring rules set.</p>
+                    </div>
+                </div>
+            </div>
+            <!-- END RECURRING TRANSACTIONS VIEW -->
+            
+            <!-- SAVINGS GOALS VIEW (NEW) -->
+            <div id="savings-goals-view" class="hidden">
+                <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
+                    <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 class="text-xl font-extrabold text-gray-800">Savings Goals</h2>
+                    <div class="w-8"></div> 
+                </header>
+
+                <!-- New Goal Form -->
+                <div class="primary-card p-6 mb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Create New Goal</h3>
+                    <form id="goal-form" class="space-y-4">
+                        <div>
+                            <label for="goal-name" class="block text-sm font-medium text-gray-700">Goal Name</label>
+                            <input type="text" id="goal-name" placeholder="e.g., New Laptop, Vacation Fund" required
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="goal-target-amount" class="block text-sm font-medium text-gray-700">Target Amount (₹)</label>
+                                <input type="number" id="goal-target-amount" placeholder="150000" step="1" min="1" required
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="goal-target-date" class="block text-sm font-medium text-gray-700">Target Date (Optional)</label>
+                                <input type="date" id="goal-target-date" 
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition duration-150 shadow-md shadow-blue-500/30">
+                            SET GOAL
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Active Goals List -->
+                <div class="primary-card p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Active Goals</h3>
+                    <div id="active-goals-list" class="space-y-4">
+                         <p class="text-center text-gray-500 p-2">No savings goals defined.</p>
+                    </div>
+                </div>
+            </div>
+            <!-- END SAVINGS GOALS VIEW -->
+
+
             <!-- IMPORT TRANSACTIONS VIEW (SIMULATED BANK LINK) -->
             <div id="import-transactions-view" class="hidden">
-                 <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
+                   <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
                     <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
                         <!-- Back Arrow -->
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -558,7 +733,7 @@
                     <form id="import-form" class="space-y-4">
                         <!-- File Upload Simulation (Input remains text area for simplicity) -->
                         <textarea id="import-data" rows="6" placeholder="Paste bank statement lines here (e.g., -125.50, Uber Ride, Transportation)"
-                                  class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                     class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500"></textarea>
                         
                         <button type="submit" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition duration-150 shadow-md shadow-green-500/30">
                             PROCESS AND IMPORT TRANSACTIONS
@@ -601,7 +776,7 @@
 
     <!-- Fixed Bottom Navigation Bar (Sticky with Blur) -->
     <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 max-w-[450px] mx-auto bg-white/90 border-t border-gray-200 shadow-2xl z-20 h-16 rounded-t-2xl flex justify-around items-center"
-         style="backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+            style="backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
         <!-- Dashboard Button -->
         <button id="nav-dashboard" onclick="showView('dashboard')" class="flex flex-col items-center nav-button-active focus:outline-none transition-colors duration-200">
             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"></path></svg>
@@ -613,6 +788,18 @@
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
             <span class="text-xs font-medium">Analytics</span>
         </button>
+        
+         <!-- Recurring Button (UPDATED) -->
+        <button id="nav-recurring" onclick="showView('recurring')" class="flex flex-col items-center text-gray-500 hover:text-blue-600 transition-colors duration-200 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 13H4m2 7l-2.293-2.293c-.63-.63-.184-1.707.707-1.707H17m0 0a2 2 0 100 4 2 2 0 000-4z"></path></svg>
+            <span class="text-xs font-medium">Recurring</span>
+        </button>
+        
+         <!-- Goals Button (NEW) -->
+        <button id="nav-goals" onclick="showView('goals')" class="flex flex-col items-center text-gray-500 hover:text-blue-600 transition-colors duration-200 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6m4 0a1 1 0 100-2 1 1 0 000 2zm0 0l-1.558-.871a2 2 0 00-1.884 0L2 19h10zm7 0a1 1 0 100-2 1 1 0 000 2zm0 0l-1.558-.871a2 2 0 00-1.884 0L17 19h10zM12 4v16m-4-8h8"></path></svg>
+            <span class="text-xs font-medium">Goals</span>
+        </button>
     </nav>
     <!-- END NEW BOTTOM NAVIGATION BAR -->
 
@@ -623,6 +810,12 @@
         let transactions = [];
         // Structure: { category: { period: amount, period: amount, ... } }
         let budgets = {}; 
+        // Structure: [{ id, description, amount, type, category, frequency, day, lastGeneratedTimestamp }]
+        let recurringTransactions = [];
+        // NEW: Savings Goals Structure
+        // [{ id, name, targetAmount, currentAmount, targetDate, createdAt }]
+        let goals = []; 
+        
         let trendChart, breakdownChart, incomeChart; // Global Chart.js instances (Added incomeChart)
         let aggregatedData = null; // Global variable to store aggregated data
         let currentPeriod = 'month'; // Default period for analytics
@@ -631,6 +824,9 @@
         // Key for storing data in the browser's local storage
         const STORAGE_KEY = 'budgetTrackerTransactions'; 
         const STORAGE_KEY_BUDGETS = 'budgetTrackerBudgets'; // Updated storage key for multi-period support
+        const STORAGE_KEY_RECURRING = 'budgetTrackerRecurring'; // NEW storage key
+        const STORAGE_KEY_GOALS = 'budgetTrackerGoals'; // NEW storage key
+        const LAST_RECURRING_RUN_KEY = 'lastRecurringRun'; // Key for last run time
 
         // List of all possible categories (used to populate the filter)
         // Excluding income categories from expense budgets
@@ -638,8 +834,123 @@
             'Uncategorized', 'Food', 'Transportation', 'Housing', 'Entertainment',
             'Shopping', 'Utilities', 'Other'
         ];
-        const ALL_CATEGORIES = [...EXPENSE_CATEGORIES, 'Salary (Income)'];
+        // Note: 'Savings/Goal Contribution' is an implicit expense category for goal deposits only.
+        const ALL_CATEGORIES = [...EXPENSE_CATEGORIES, 'Salary (Income)', 'Savings/Goal Contribution'];
+        const INCOME_CATEGORIES = ['Salary (Income)', 'Other'];
+        
+        // Helper to generate a unique ID
+        const generateId = () => Date.now().toString() + Math.random().toString(16).slice(2);
+        
+        // --- Storage Functions ---
+        
+        const loadBudgets = () => {
+            try {
+                const storedData = localStorage.getItem(STORAGE_KEY_BUDGETS);
+                budgets = storedData ? JSON.parse(storedData) : {};
+            } catch (e) {
+                console.error("Error loading budgets from local storage:", e);
+                budgets = {};
+            }
+        };
 
+        const saveBudgets = () => {
+            try {
+                localStorage.setItem(STORAGE_KEY_BUDGETS, JSON.stringify(budgets));
+                renderBudgetProgress(); // Update the dashboard view
+                renderBudgetSettings(); // Update the settings list
+            } catch (e) {
+                console.error("Error saving budgets.", 'error');
+                showMessage("Error saving budgets.", 'error');
+            }
+        };
+
+        const loadRecurringTransactions = () => {
+            try {
+                const storedData = localStorage.getItem(STORAGE_KEY_RECURRING);
+                recurringTransactions = storedData ? JSON.parse(storedData) : [];
+            } catch (e) {
+                console.error("Error loading recurring transactions:", e);
+                recurringTransactions = [];
+            }
+        };
+        
+        const saveRecurringTransactions = () => {
+            try {
+                localStorage.setItem(STORAGE_KEY_RECURRING, JSON.stringify(recurringTransactions));
+                renderRecurringTransactions();
+                renderActiveRecurringRules(); // NEW CALL for dashboard update
+            } catch (e) {
+                console.error("Error saving recurring transactions.", 'error');
+                showMessage("Error saving recurring transactions.", 'error');
+            }
+        };
+        
+        const loadGoals = () => {
+            try {
+                const storedData = localStorage.getItem(STORAGE_KEY_GOALS);
+                goals = storedData ? JSON.parse(storedData) : [];
+            } catch (e) {
+                console.error("Error loading goals from local storage:", e);
+                goals = [];
+            }
+        };
+
+        const saveGoals = () => {
+            try {
+                localStorage.setItem(STORAGE_KEY_GOALS, JSON.stringify(goals));
+                renderGoalsProgress(); // Existing call for the Goals view
+                renderActiveGoalsDashboard(); // ADDED CALL for dashboard update
+            } catch (e) {
+                console.error("Error saving goals.", 'error');
+                showMessage("Error saving goals.", 'error');
+            }
+        };
+
+
+        /**
+         * Loads transactions array from the browser's localStorage.
+         */
+        const loadTransactions = () => {
+            try {
+                const storedData = localStorage.getItem(STORAGE_KEY);
+                transactions = storedData ? JSON.parse(storedData) : [];
+            } catch (e) {
+                console.error("Error loading transactions from local storage:", e);
+                transactions = [];
+            }
+        };
+
+        /**
+         * Saves the current transactions array to the browser's localStorage and updates the UI.
+         */
+        const saveTransactions = (suppressMessage = false) => {
+            try {
+                // Filter out any transactions without a proper timestamp before saving
+                const transactionsToSave = transactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(transactionsToSave));
+                
+                // Manually trigger UI updates after saving
+                renderSummary();
+                renderRecentTransactions();
+                renderBudgetProgress();
+                renderActiveRecurringRules(); 
+                renderActiveGoalsDashboard(); // ADDED CALL
+                
+                // Only render charts/lists if their view is currently visible
+                if (!document.getElementById('analytics-view').classList.contains('hidden')) {
+                    aggregatedData = aggregateData(transactions, currentPeriod);
+                    renderCharts(aggregatedData);
+                } else if (!document.getElementById('full-list-view').classList.contains('hidden')) {
+                     renderAllTransactions();
+                }
+                
+            } catch (e) {
+                console.error("Error saving data.", 'error');
+                showMessage("Error saving data.", 'error');
+            }
+        };
+        
+        // --- End Storage Functions ---
 
         /**
          * Converts a number to a currency string format (Indian Rupees).
@@ -665,7 +976,7 @@
             box.className = 'show'; // Reset classes to trigger transition
 
             // Reset colors
-            box.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500');
+            box.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', 'text-gray-800');
 
             if (type === 'success') {
                 box.classList.add('bg-green-500');
@@ -680,6 +991,415 @@
                 box.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', 'text-gray-800');
             }, 3000);
         };
+        
+        // --- Recurring Transaction Logic ---
+        
+        const getNextRecurrenceDate = (rule, startDate) => {
+             const lastDate = new Date(startDate);
+             const now = new Date();
+             let nextDate = new Date(lastDate);
+             
+             // Ensure we always move forward in time
+             do {
+                 nextDate = new Date(nextDate); // Clone date for mutation
+                 if (rule.frequency === 'Daily') {
+                     nextDate.setDate(nextDate.getDate() + 1);
+                 } else if (rule.frequency === 'Weekly') {
+                     nextDate.setDate(nextDate.getDate() + 7);
+                 } else if (rule.frequency === 'Monthly') {
+                     // Increment month, then set the day of month, handling end-of-month correctly
+                     nextDate.setMonth(nextDate.getMonth() + 1);
+                     const dayOfMonth = rule.day;
+                     // Only set day if it's less than the last day of the new month
+                     const maxDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+                     nextDate.setDate(Math.min(dayOfMonth, maxDay));
+                 } else if (rule.frequency === 'Yearly') {
+                     nextDate.setFullYear(nextDate.getFullYear() + 1);
+                 }
+                 // Reset time to ensure consistency (00:00:00 of the calculated day)
+                 nextDate.setHours(0, 0, 0, 0);
+
+             } while (nextDate <= now);
+
+             return nextDate; // This returns the *first* date that is *after* now and after lastDate
+        };
+        
+        const processRecurringTransactions = () => {
+             const now = new Date();
+             now.setHours(0, 0, 0, 0); // Normalize 'now' to the beginning of today for comparison
+             let newTransactionsGenerated = 0;
+             let newRecurringRules = [...recurringTransactions]; // Work with a copy
+
+             newRecurringRules = newRecurringRules.map(rule => {
+                 // Use the creation date as the start if lastGenerated is null
+                 let lastDate = rule.lastGenerated || rule.createdAt;
+                 let currentDate = new Date(lastDate);
+                 currentDate.setHours(0, 0, 0, 0);
+
+                 // Loop to generate all missed transactions up to today (inclusive)
+                 while (currentDate <= now) {
+                      // Skip the first iteration if currentDate equals lastDate (prevents duplicate on first run)
+                      if (currentDate.getTime() === new Date(lastDate).getTime()) {
+                          // For Weekly, Daily, Monthly, Yearly, the last generated date is the date of the LAST transaction made.
+                          // So we must advance to the next expected date for processing.
+                          currentDate = getNextRecurrenceDate({ ...rule, day: rule.day || 1 }, currentDate);
+                          // Break if next date is too far in the future
+                          if (currentDate > now) break;
+                      }
+
+                     let shouldGenerate = false;
+                     let nextOccurrence = new Date(currentDate);
+
+                     if (rule.frequency === 'Daily') {
+                         shouldGenerate = true;
+                         nextOccurrence.setDate(nextOccurrence.getDate() + 1); // For the next loop iteration
+                     } else if (rule.frequency === 'Weekly') {
+                         // Check if the current day matches the target day of the week (0=Sunday)
+                         if (currentDate.getDay() === rule.day) {
+                             shouldGenerate = true;
+                         }
+                         nextOccurrence.setDate(nextOccurrence.getDate() + 1);
+                     } else if (rule.frequency === 'Monthly') {
+                         // Check if the current day of the month matches the target day
+                         if (currentDate.getDate() === rule.day) {
+                             shouldGenerate = true;
+                         }
+                         nextOccurrence.setDate(nextOccurrence.getDate() + 1);
+                     } else if (rule.frequency === 'Yearly') {
+                          // For Yearly, we check only once per year, and we check based on the rule's created month/day
+                          // Simple check: if current day matches the creation day/month (or rule.day/rule.month if implemented)
+                          // Since we only store 'day' (day of month 1-28), we approximate a Yearly rule to occur on that day of the rule's creation month.
+                          if (currentDate.getDate() === rule.day && currentDate.getMonth() === new Date(rule.createdAt).getMonth()) {
+                              shouldGenerate = true;
+                          }
+                          nextOccurrence.setDate(nextOccurrence.getDate() + 1);
+                     }
+
+                     if (shouldGenerate) {
+                         const newTransaction = {
+                             id: generateId(),
+                             description: `${rule.description} (Auto)`,
+                             amount: Number(rule.amount),
+                             type: rule.type,
+                             category: rule.category,
+                             timestamp: { seconds: Math.floor(currentDate.getTime() / 1000) },
+                             recurringId: rule.id // Link back to the recurring rule
+                         };
+                         transactions.push(newTransaction);
+                         newTransactionsGenerated++;
+                         rule.lastGenerated = currentDate.getTime(); // Update the rule's last generated time
+                     }
+
+                     // Move to the next day, avoiding endless loops if calculation is wrong
+                     // Only advance if we are not using the specific date logic (Monthly/Weekly) to iterate
+                     if (currentDate.getTime() === nextOccurrence.getTime()) {
+                         break; // Safety break, should not happen if logic is sound
+                     }
+                     currentDate = nextOccurrence;
+                     
+                     // Safety break for older local storage data or very old rules (don't generate thousands)
+                     const diffDays = Math.floor((now.getTime() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24));
+                     if (diffDays > 365 * 2) break; // Don't process more than 2 years of backlogged data
+                 }
+
+                 // Final safety update for lastGenerated if transactions were generated
+                 if (rule.lastGenerated > lastDate) {
+                     rule.lastGenerated = currentDate.getTime();
+                 }
+                 
+                 return rule;
+             });
+
+             // Update the main array and save if anything changed
+             if (newTransactionsGenerated > 0) {
+                 recurringTransactions = newRecurringRules;
+                 saveRecurringTransactions(); // Save updated lastGenerated timestamps
+                 saveTransactions(true); // Save new transactions, suppress message
+                 showMessage(`${newTransactionsGenerated} recurring transactions generated.`, 'success');
+             }
+        };
+        
+        /**
+         * Renders a summary of active recurring rules on the dashboard.
+         */
+        const renderActiveRecurringRules = () => {
+            const listElement = document.getElementById('active-recurring-dashboard-list');
+            listElement.innerHTML = '';
+            
+            const activeRules = recurringTransactions.slice(0, 3); // Show top 3 rules for brevity
+            
+            if (activeRules.length === 0) {
+                listElement.innerHTML = '<p class="text-center text-gray-500 text-sm">No recurring schedules found. <a onclick="showView(\'recurring\')" class="text-blue-500 hover:text-blue-700 cursor-pointer">Set one now!</a></p>';
+                return;
+            }
+
+            activeRules.forEach(rule => {
+                 const isIncome = rule.type === 'income';
+                 const typeClass = isIncome ? 'text-emerald-600' : 'text-red-600';
+                 const sign = isIncome ? '+' : '-';
+                 
+                 let frequencyText = rule.frequency;
+                 if (rule.frequency === 'Monthly') frequencyText = `Monthly (Day ${rule.day})`;
+                 else if (rule.frequency === 'Weekly') frequencyText = `Weekly (Day ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][rule.day]})`;
+
+                 const item = document.createElement('div');
+                 item.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg shadow-sm';
+                 item.innerHTML = `
+                      <div class="min-w-0">
+                          <p class="text-sm font-bold text-gray-800 truncate">${rule.description}</p>
+                          <p class="text-xs text-gray-500">${frequencyText} · ${rule.category}</p>
+                      </div>
+                      <span class="text-lg font-extrabold ${typeClass} flex-shrink-0">
+                          ${sign}${formatCurrency(rule.amount)}
+                      </span>
+                 `;
+                 listElement.appendChild(item);
+            });
+        };
+
+        /**
+         * Renders the active recurring transaction rules list.
+         */
+        const renderRecurringTransactions = () => {
+             const listElement = document.getElementById('active-recurring-list');
+             listElement.innerHTML = '';
+
+             if (recurringTransactions.length === 0) {
+                 listElement.innerHTML = '<p class="text-center text-gray-500 p-2">No recurring rules currently set.</p>';
+                 return;
+             }
+             
+             recurringTransactions.forEach(rule => {
+                 let nextRunDate = 'N/A';
+                 let frequencyText = rule.frequency;
+                 
+                 if (rule.frequency === 'Weekly') {
+                     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                     frequencyText = `Weekly (Every ${days[rule.day]})`;
+                 } else if (rule.frequency === 'Monthly') {
+                     frequencyText = `Monthly (Day ${rule.day})`;
+                 } else if (rule.frequency === 'Yearly') {
+                     frequencyText = `Yearly (Day ${rule.day} of ${new Date(rule.createdAt).toLocaleString('en-US', { month: 'long' })})`;
+                 }
+                 
+                 try {
+                     // Approximate the next run date for display
+                     let approximationDate = rule.lastGenerated ? new Date(rule.lastGenerated) : new Date(rule.createdAt);
+                     
+                     // Get the next run date starting from the last generated date
+                     let nextDate = getNextRecurrenceDate(rule, approximationDate); 
+                     
+                     nextRunDate = nextDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                     
+                 } catch (e) {
+                      console.error("Error calculating next recurrence date:", e);
+                 }
+
+                 const isIncome = rule.type === 'income';
+                 const typeClass = isIncome ? 'text-emerald-600' : 'text-red-600';
+                 const typeIcon = isIncome ? `<svg class="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm-2-7V7h2v3h-2z"/></svg>` : `<svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-9h4v2h-4v-2z"/></svg>`;
+
+                 const item = document.createElement('div');
+                 item.className = 'recurring-item p-4 flex justify-between items-center space-x-3';
+                 item.innerHTML = `
+                      <div class="flex items-center space-x-3 min-w-0 flex-1">
+                          <div class="p-2 rounded-full ${isIncome ? 'bg-emerald-100' : 'bg-red-100'}">${typeIcon}</div>
+                          <div class="min-w-0">
+                              <p class="text-sm font-bold text-gray-900 truncate">${rule.description}</p>
+                              <p class="text-xs text-gray-500">${rule.category} - ${frequencyText}</p>
+                          </div>
+                      </div>
+                      <div class="text-right">
+                          <p class="text-lg font-extrabold ${typeClass}">${formatCurrency(rule.amount)}</p>
+                          <p class="text-xs text-gray-600">Next: ${nextRunDate}</p>
+                      </div>
+                      <button class="delete-recurring-btn text-gray-400 hover:text-red-500 transition-colors duration-150 p-1 rounded" data-id="${rule.id}" title="Delete Recurring Rule">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                      </button>
+                 `;
+                 
+                 listElement.appendChild(item);
+             });
+             
+             listElement.querySelectorAll('.delete-recurring-btn').forEach(btn => {
+                 btn.addEventListener('click', (e) => {
+                     const idToDelete = e.currentTarget.dataset.id;
+                     recurringTransactions = recurringTransactions.filter(r => r.id !== idToDelete);
+                     saveRecurringTransactions();
+                     showMessage('Recurring rule removed.', 'success');
+                 });
+             });
+        }
+        
+        // --- End Recurring Transaction Logic ---
+
+
+        // --- Goal Logic (NEW) ---
+        
+        /**
+         * Renders a summary of active goals on the dashboard.
+         */
+        const renderActiveGoalsDashboard = () => {
+            const listElement = document.getElementById('active-goals-dashboard-list');
+            listElement.innerHTML = '';
+            
+            const activeGoals = goals.filter(g => g.currentAmount < g.targetAmount).slice(0, 3); // Show top 3 active goals
+            
+            if (activeGoals.length === 0) {
+                listElement.innerHTML = '<p class="text-center text-gray-500 text-sm">No active goals set. <a onclick="showView(\'goals\')" class="text-blue-500 hover:text-blue-700 cursor-pointer">Start a new goal!</a></p>';
+                return;
+            }
+
+            activeGoals.forEach(goal => {
+                const percentage = goal.targetAmount > 0 ? Math.min(100, (goal.currentAmount / goal.targetAmount) * 100) : 0;
+                const remaining = goal.targetAmount - goal.currentAmount;
+                const progressColor = percentage >= 100 ? 'bg-emerald-600' : 'bg-blue-600';
+                
+                const item = document.createElement('div');
+                item.className = 'flex flex-col space-y-1 p-3 bg-gray-50 rounded-lg shadow-sm cursor-pointer hover:bg-gray-100 transition-colors duration-150';
+                item.onclick = () => showView('goals');
+                
+                item.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <p class="text-sm font-bold text-gray-800 truncate">${goal.name}</p>
+                        <span class="text-xs font-semibold ${percentage >= 100 ? 'text-emerald-600' : 'text-blue-600'}">${Math.round(percentage)}%</span>
+                    </div>
+                    <div class="flex justify-between items-end text-xs font-medium">
+                        <span class="text-gray-500">${formatCurrency(goal.currentAmount)} / ${formatCurrency(goal.targetAmount)}</span>
+                        <span class="${percentage >= 100 ? 'text-emerald-600' : 'text-gray-600'}">${formatCurrency(remaining)} Left</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-1.5">
+                        <div class="h-1.5 rounded-full ${progressColor} transition-all duration-500" style="width: ${percentage}%"></div>
+                    </div>
+                `;
+                listElement.appendChild(item);
+            });
+        };
+        
+        /**
+         * Renders the goals progress in the dedicated view.
+         */
+        const renderGoalsProgress = () => {
+            const listElement = document.getElementById('active-goals-list');
+            listElement.innerHTML = '';
+
+            if (goals.length === 0) {
+                 listElement.innerHTML = '<p class="text-center text-gray-500 p-2">No savings goals defined. Use the form above to create your first goal!</p>';
+                 return;
+            }
+
+            goals.forEach(goal => {
+                const percentage = goal.targetAmount > 0 ? Math.min(100, (goal.currentAmount / goal.targetAmount) * 100) : 0;
+                const remaining = goal.targetAmount - goal.currentAmount;
+                const progressColor = percentage >= 100 ? 'bg-emerald-600' : 'bg-blue-600';
+                const statusText = percentage >= 100 ? 'Achieved!' : `Saving (${Math.round(percentage)}%)`;
+                const dateDisplay = goal.targetDate ? `Target: ${new Date(goal.targetDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}` : 'No Target Date';
+                
+                const goalElement = document.createElement('div');
+                goalElement.className = 'primary-card p-5 space-y-3 border-l-4 border-blue-600 shadow-xl';
+                goalElement.innerHTML = `
+                     <!-- Header -->
+                     <div class="flex justify-between items-start">
+                         <div>
+                             <h4 class="text-lg font-extrabold text-gray-900">${goal.name}</h4>
+                             <p class="text-xs text-gray-500">${dateDisplay}</p>
+                         </div>
+                         <button class="delete-goal-btn text-gray-400 hover:text-red-500 p-1 rounded" data-id="${goal.id}" title="Delete Goal">
+                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                         </button>
+                     </div>
+                     
+                     <!-- Progress Bar -->
+                     <div class="space-y-1">
+                        <div class="flex justify-between items-center text-sm font-semibold">
+                             <span class="text-gray-800">${statusText}</span>
+                             <span class="${percentage >= 100 ? 'text-emerald-600 font-extrabold' : 'text-gray-600'}">${formatCurrency(goal.currentAmount)} / ${formatCurrency(goal.targetAmount)}</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                             <div class="h-3 rounded-full ${progressColor} transition-all duration-500" style="width: ${percentage}%"></div>
+                        </div>
+                        <p class="text-xs text-right ${percentage >= 100 ? 'text-emerald-600 font-bold' : 'text-gray-500'}">
+                            ${percentage < 100 ? `${formatCurrency(remaining)} Left to Go` : 'Goal Complete!'}
+                        </p>
+                     </div>
+
+                     <!-- Deposit Input -->
+                     <div class="mt-4 flex space-x-2 pt-3 border-t border-gray-100">
+                         <input type="number" id="deposit-amount-${goal.id}" placeholder="Deposit Amount" step="1" min="1"
+                                 class="flex-1 rounded-lg border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500 text-sm">
+                         <button class="deposit-btn py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition duration-150 text-sm flex-shrink-0" data-id="${goal.id}">
+                             Deposit
+                         </button>
+                     </div>
+                `;
+                listElement.appendChild(goalElement);
+            });
+
+            // Attach Deposit Listeners
+            listElement.querySelectorAll('.deposit-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const goalId = e.currentTarget.dataset.id;
+                    const inputId = `deposit-amount-${goalId}`;
+                    const depositAmount = parseFloat(document.getElementById(inputId).value);
+                    
+                    if (!isNaN(depositAmount) && depositAmount > 0) {
+                        depositToGoal(goalId, depositAmount);
+                        document.getElementById(inputId).value = ''; // Clear input
+                    } else {
+                        showMessage("Please enter a valid deposit amount.", 'warning');
+                    }
+                });
+            });
+            
+            // Attach Delete Listeners
+            listElement.querySelectorAll('.delete-goal-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const goalId = e.currentTarget.dataset.id;
+                    deleteGoal(goalId);
+                });
+            });
+        };
+        
+        // Core logic for depositing funds
+        const depositToGoal = (goalId, amount) => {
+            const goalIndex = goals.findIndex(g => g.id === goalId);
+            if (goalIndex === -1) return;
+
+            // 1. Update the goal's current amount
+            goals[goalIndex].currentAmount += amount;
+            
+            // 2. IMPORTANT: Create a corresponding Expense Transaction
+            // This ensures the money is removed from the current balance (balance decreases)
+            const newGoalTransaction = {
+                id: generateId(),
+                description: `Goal Deposit: ${goals[goalIndex].name}`,
+                amount: amount,
+                type: 'expense', // It's a reduction in liquid balance
+                category: 'Savings/Goal Contribution', // An implicit expense category
+                timestamp: { seconds: Math.floor(Date.now() / 1000) }
+            };
+            
+            transactions.push(newGoalTransaction);
+            
+            // Save both goals and transactions
+            saveGoals();
+            saveTransactions(); // This will trigger UI updates
+            
+            showMessage(`₹${amount.toFixed(2)} deposited to ${goals[goalIndex].name}.`, 'success');
+            
+            if (goals[goalIndex].currentAmount >= goals[goalIndex].targetAmount) {
+                 showMessage(`🎉 Goal Reached: ${goals[goalIndex].name}!`, 'success');
+            }
+        };
+        
+        const deleteGoal = (goalId) => {
+            goals = goals.filter(g => g.id !== goalId);
+            saveGoals();
+            showMessage("Savings goal removed.");
+        };
+        
+        // --- End Goal Logic ---
+
 
         // --- Budget Warning Modal Functions ---
         const closeBudgetWarning = () => {
@@ -736,72 +1456,6 @@
         // --- End Budget Warning Modal Functions ---
 
 
-        // --- Budget Storage Functions ---
-        const loadBudgets = () => {
-            try {
-                const storedData = localStorage.getItem(STORAGE_KEY_BUDGETS);
-                budgets = storedData ? JSON.parse(storedData) : {};
-            } catch (e) {
-                console.error("Error loading budgets from local storage:", e);
-                budgets = {};
-            }
-        };
-
-        const saveBudgets = () => {
-            try {
-                localStorage.setItem(STORAGE_KEY_BUDGETS, JSON.stringify(budgets));
-                renderBudgetProgress(); // Update the dashboard view
-                renderBudgetSettings(); // Update the settings list
-            } catch (e) {
-                console.error("Error saving budgets.", 'error');
-                showMessage("Error saving budgets.", 'error');
-            }
-        };
-        // --- End Budget Storage Functions ---
-
-
-        /**
-         * Loads transactions array from the browser's localStorage.
-         */
-        const loadTransactions = () => {
-            try {
-                const storedData = localStorage.getItem(STORAGE_KEY);
-                transactions = storedData ? JSON.parse(storedData) : [];
-            } catch (e) {
-                console.error("Error loading transactions from local storage:", e);
-                transactions = [];
-            }
-        };
-
-        /**
-         * Saves the current transactions array to the browser's localStorage and updates the UI.
-         */
-        const saveTransactions = () => {
-            try {
-                // Filter out any transactions without a proper timestamp before saving
-                const transactionsToSave = transactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(transactionsToSave));
-                
-                // Manually trigger UI updates after saving
-                renderSummary();
-                renderRecentTransactions();
-                renderBudgetProgress();
-                
-                // Only render charts/lists if their view is currently visible
-                if (!document.getElementById('analytics-view').classList.contains('hidden')) {
-                    aggregatedData = aggregateData(transactions, currentPeriod);
-                    renderCharts(aggregatedData);
-                } else if (!document.getElementById('full-list-view').classList.contains('hidden')) {
-                     renderAllTransactions();
-                }
-
-            } catch (e) {
-                console.error("Error saving data.", 'error');
-                showMessage("Error saving data.", 'error');
-            }
-        };
-
-
         /**
          * Initializes the application data in local storage mode.
          */
@@ -809,6 +1463,9 @@
             document.getElementById('loading-message')?.remove();
             loadTransactions();
             loadBudgets(); // Load budgets upon init
+            loadRecurringTransactions(); // NEW: Load recurring rules
+            loadGoals(); // NEW: Load goals
+            processRecurringTransactions(); // NEW: Check and generate recurring transactions
 
             // Set today's date as the default for the Quick Add form
             const today = new Date();
@@ -823,10 +1480,11 @@
             saveTransactions(); // Initial rendering of summary and recents
             populateCategoryFilter(); // Populate the transaction filter options
             populateBudgetCategoryFilter(); // Populate the budget setting options
+            populateRecurringCategoryFilter(); // NEW: Populate recurring category options
         };
 
         /**
-         * Populates the category filter dropdown in the full list view.
+         * Populates the category filter dropdown in the full list view and recurring form.
          */
         const populateCategoryFilter = () => {
             const filterElement = document.getElementById('category-filter');
@@ -859,7 +1517,7 @@
 
             filterElement.innerHTML = '';
             
-            // Add EXPENSE categories only
+            // Add EXPENSE categories only (as budgets are typically for expenses)
             EXPENSE_CATEGORIES.forEach(category => {
                 let option = document.createElement('option');
                 option.value = category;
@@ -872,6 +1530,38 @@
         };
         
         /**
+         * Populates the category dropdown in the recurring form.
+         */
+        const populateRecurringCategoryFilter = () => {
+             const filterElement = document.getElementById('recurring-category');
+            if (!filterElement) return;
+
+            filterElement.innerHTML = '';
+            
+            // Add EXPENSE and INCOME categories, excluding Savings/Goal Contribution for clean setup
+            [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES].forEach(category => {
+                let option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                filterElement.appendChild(option);
+            });
+        };
+        
+        /**
+         * Hides/shows the Day of Week/Month input based on the selected frequency.
+         */
+        const toggleRecurringDayInput = (frequency) => {
+             document.getElementById('recurring-day-input-monthly').classList.add('hidden');
+             document.getElementById('recurring-day-input-weekly').classList.add('hidden');
+             
+             if (frequency === 'Monthly' || frequency === 'Yearly') {
+                 document.getElementById('recurring-day-input-monthly').classList.remove('hidden');
+             } else if (frequency === 'Weekly') {
+                 document.getElementById('recurring-day-input-weekly').classList.remove('hidden');
+             }
+        };
+
+        /**
          * Loads existing budget amount and period into the input field for editing.
          */
         const loadBudgetForEdit = (category) => {
@@ -883,7 +1573,6 @@
             amountInput.value = budget;
         }
 
-
         /**
          * Renders the budget progress bars on the dashboard.
          */
@@ -891,49 +1580,39 @@
             const listElement = document.getElementById('budget-progress-list');
             listElement.innerHTML = '';
             
-            // Calculate current period keys
-            const today = new Date();
-            const currentDayKey = today.toLocaleDateString('en-US'); // For daily check
-            const currentMonthKey = today.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit' });
-            const currentYearKey = today.getFullYear().toString();
-            
-            // 1. Calculate current expense totals by category and period
+            // 1. Calculate current expense totals by category and period for today
             const periodExpenses = transactions.reduce((acc, t) => {
                 if (t.type === 'expense' && t.timestamp && typeof t.timestamp.seconds === 'number') {
                     const date = new Date(t.timestamp.seconds * 1000);
+                    const amount = Number(t.amount);
                     
-                    const dayKey = date.toLocaleDateString('en-US');
-                    const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit' });
-                    const yearKey = date.getFullYear().toString();
-
                     acc[t.category] = acc[t.category] || {};
-                    acc[t.category]['Daily'] = (acc[t.category]['Daily'] || 0);
-                    acc[t.category]['Monthly'] = (acc[t.category]['Monthly'] || 0);
-                    acc[t.category]['Yearly'] = (acc[t.category]['Yearly'] || 0);
 
-                    if (dayKey === currentDayKey) acc[t.category]['Daily'] += Number(t.amount);
-                    if (monthKey === currentMonthKey) acc[t.category]['Monthly'] += Number(t.amount);
-                    if (yearKey === currentYearKey) acc[t.category]['Yearly'] += Number(t.amount);
+                    // Calculate Daily spending for today
+                    if (date.toDateString() === new Date().toDateString()) {
+                       acc[t.category]['Daily'] = (acc[t.category]['Daily'] || 0) + amount;
+                    }
+                    // Calculate Monthly spending for this month
+                    if (date.getFullYear() === new Date().getFullYear() && date.getMonth() === new Date().getMonth()) {
+                        acc[t.category]['Monthly'] = (acc[t.category]['Monthly'] || 0) + amount;
+                    }
+                    // Calculate Yearly spending for this year
+                    if (date.getFullYear() === new Date().getFullYear()) {
+                       acc[t.category]['Yearly'] = (acc[t.category]['Yearly'] || 0) + amount;
+                    }
                 }
                 return acc;
             }, {});
             
             let hasBudgets = false;
-            const periodMap = {
-                'Daily': currentDayKey,
-                'Monthly': currentMonthKey,
-                'Yearly': currentYearKey
-            };
-            const renderedBudgets = [];
-
+            
             // 2. Render progress bar for each set budget (all periods)
             for (const category in budgets) {
                 for (const period in budgets[category]) {
                     const limit = Number(budgets[category][period]);
                     
                     if (limit > 0) {
-                        const key = period; // 'Daily', 'Monthly', or 'Yearly'
-                        const spent = periodExpenses[category]?.[key] || 0;
+                        const spent = periodExpenses[category]?.[period] || 0;
                         const percentage = limit > 0 ? Math.min(100, (spent / limit) * 100) : (spent > 0 ? 100 : 0);
                         
                         let progressBarClass = 'bg-budget-green';
@@ -957,7 +1636,7 @@
                             </div>
                             <div class="flex justify-between items-end text-xs font-medium">
                                 <span class="text-gray-500">${formatCurrency(spent)} / ${formatCurrency(limit)}</span>
-                                <span class="${remaining < 0 ? 'text-red-600' : 'text-gray-600'}">${formatCurrency(Math.abs(remaining))} ${remaining < 0 ? 'Over' : 'Left'}</span>
+                                <span class="${remaining < 0 ? 'text-red-600 font-bold' : 'text-gray-600'}">${formatCurrency(Math.abs(remaining))} ${remaining < 0 ? 'Over' : 'Left'}</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2.5">
                                 <div class="h-2.5 rounded-full ${progressBarClass} transition-all duration-500" style="width: ${percentage}%"></div>
@@ -976,21 +1655,27 @@
 
 
         /**
-         * Switches the active view (Dashboard, Analytics, List, or Budget) and updates the navigation bar state.
-         * @param {string} viewName - 'dashboard', 'analytics', 'list', 'budget-settings', or 'import-transactions'.
+         * Switches the active view (Dashboard, Analytics, List, Budget, Recurring, Import) and updates the navigation bar state.
+         * @param {string} viewName - 'dashboard', 'analytics', 'list', 'budget-settings', 'recurring', 'goals', or 'import-transactions'.
          */
         const showView = (viewName) => {
             document.getElementById('dashboard-view').classList.add('hidden');
             document.getElementById('analytics-view').classList.add('hidden');
             document.getElementById('full-list-view').classList.add('hidden'); 
             document.getElementById('budget-settings-view').classList.add('hidden');
-            document.getElementById('import-transactions-view').classList.add('hidden'); // NEW VIEW
+            document.getElementById('import-transactions-view').classList.add('hidden'); 
+            document.getElementById('recurring-transactions-view').classList.add('hidden'); 
+            document.getElementById('savings-goals-view').classList.add('hidden'); // NEW VIEW
 
             // Reset navigation bar colors
-            document.getElementById('nav-dashboard').classList.remove('nav-button-active', 'text-gray-500');
-            document.getElementById('nav-analytics').classList.remove('nav-button-active', 'text-gray-500');
-            document.getElementById('nav-dashboard').classList.add('text-gray-500');
-            document.getElementById('nav-analytics').classList.add('text-gray-500');
+            const navButtons = ['nav-dashboard', 'nav-analytics', 'nav-recurring', 'nav-goals']; // Added nav-goals
+            navButtons.forEach(id => {
+                 const btn = document.getElementById(id);
+                 if (btn) {
+                     btn.classList.remove('nav-button-active', 'text-gray-500');
+                     btn.classList.add('text-gray-500');
+                 }
+            });
 
 
             if (viewName === 'dashboard') {
@@ -1011,6 +1696,14 @@
                 renderBudgetSettings();
             } else if (viewName === 'import-transactions') {
                 document.getElementById('import-transactions-view').classList.remove('hidden');
+            } else if (viewName === 'recurring') { // NEW VIEW
+                document.getElementById('recurring-transactions-view').classList.remove('hidden');
+                document.getElementById('nav-recurring').classList.add('nav-button-active');
+                renderRecurringTransactions();
+            } else if (viewName === 'goals') { // NEW VIEW
+                document.getElementById('savings-goals-view').classList.remove('hidden');
+                document.getElementById('nav-goals').classList.add('nav-button-active');
+                renderGoalsProgress();
             }
         };
         
@@ -1194,7 +1887,7 @@
         /**
          * Helper to calculate the net flow for every day in the data set.
          * @param {Array<object>} allTransactions - List of all transactions.
-         * @returns {Map<string, number>} Map of "YYYY-MM-DD" to net flow amount.
+         * @returns {Map<string, number>} Map of "MM/DD/YYYY" to net flow amount.
          */
         const calculateDailyNetFlow = (allTransactions) => {
             const dailyFlow = new Map();
@@ -1203,7 +1896,8 @@
                 if (!t.timestamp || typeof t.timestamp.seconds !== 'number') return; 
 
                 const date = new Date(t.timestamp.seconds * 1000);
-                const dateKey = date.toLocaleDateString('en-US'); // YYYY/MM/DD format used as key
+                // Use US locale for consistent day key format (MM/DD/YYYY)
+                const dateKey = date.toLocaleDateString('en-US'); 
                 const amount = Number(t.amount);
                 const flow = t.type === 'income' ? amount : -amount;
                 
@@ -1322,7 +2016,7 @@
         /**
          * Helper to format the date key for grouping (Today, Yesterday, Date).
          * @param {number} timestamp - Milliseconds since epoch.
-         * @param {boolean} isKey - If true, returns a full date string for grouping.
+         * @param {boolean} isKey - If true, returns a full date string for grouping (MM/DD/YYYY).
          */
         const formatDateKey = (timestamp, isKey) => {
             const now = new Date();
@@ -1359,6 +2053,7 @@
             
             const date = new Date(t.timestamp?.seconds * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
             const category = t.category || 'N/A';
+            const isRecurring = !!t.recurringId; // Check for recurring ID
 
             const listItem = document.createElement('div');
             listItem.className = `transaction-item flex justify-between items-center ${isFullList ? 'py-2' : 'p-3'} hover:bg-gray-50 rounded-lg transition duration-100 ease-in-out`;
@@ -1376,6 +2071,7 @@
                         <div class="flex items-center space-x-2 text-gray-500 text-sm">
                             <span>${category}</span>
                             <span class="text-xs text-gray-400">· ${date}</span>
+                            ${isRecurring ? '<span class="text-xs text-blue-500 font-bold ml-1">· RECURRING</span>' : ''}
                         </div>
                     </div>
                 </div>
@@ -1543,25 +2239,6 @@
         const chartColors = ['#dc2626', '#f97316', '#8b5cf6', '#06b6d4', '#eab308', '#4b5563', '#9ca3af']; // Using Red as primary expense color
         // Income specific colors (lighter, friendlier greens/blues)
         const incomeColors = ['#059669', '#34d399', '#60a5fa', '#3b82f6', '#10b981'];
-
-        /**
-         * Helper to create a gradient for the Area fill.
-         * @param {CanvasRenderingContext2D} ctx 
-         * @param {string} startColor 
-         * @param {string} stopColor 
-         * @returns {CanvasGradient}
-         */
-        const createAreaGradient = (ctx, startColor, stopColor) => {
-            const chartArea = ctx.chartArea;
-            if (!chartArea) return null;
-
-            const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-            gradient.addColorStop(0, stopColor); // Bottom (more transparent/darker)
-            gradient.addColorStop(0.5, startColor); // Mid-way (full color)
-            gradient.addColorStop(1, startColor); // Top (full color)
-            return gradient;
-        }
-
 
         const renderTrendChart = (data, viewMode) => {
             if (trendChart) trendChart.destroy();
@@ -1924,7 +2601,7 @@
         };
 
 
-        // --- LOCAL STORAGE LOGIC ---
+        // --- TRANSACTION AND BUDGET CRUD LOGIC ---
 
         const getCurrentSpending = (category, period) => {
             const today = new Date();
@@ -1953,17 +2630,17 @@
         }
 
         const addTransaction = (transactionData) => {
-            const newId = Date.now().toString(); 
+            const newId = generateId(); 
             
             let timestampSeconds;
             
-            // Get data from the form inputs, defaulting to 'now' if date/time is missing
+            // Get date/time from the form inputs
             const dateString = document.getElementById('date').value;
             const timeString = document.getElementById('time').value;
             const now = new Date(); 
 
             // 1. Determine the Base Date (YYYY-MM-DD)
-            let baseDate = now;
+            let baseDate = new Date(); // Default to now
             if (dateString) {
                 // If date is provided, start building the timestamp from midnight of that date
                 baseDate = new Date(dateString);
@@ -1972,12 +2649,14 @@
             if (timeString) {
                 const [hours, minutes] = timeString.split(':').map(Number);
                 baseDate.setHours(hours, minutes, 0, 0);
-            } else if (dateString && !timeString) {
-                // If ONLY date is provided, use the time from when the app loaded (now)
-                baseDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+            } else if (dateString) {
+                 // If ONLY date is provided, use the time from when the user submitted (now)
+                 baseDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+            } else {
+                 // If neither is provided, use current date and time
+                 baseDate = now;
             }
 
-            // Fallback: If both are empty, baseDate remains 'now'
             timestampSeconds = Math.floor(baseDate.getTime() / 1000);
 
             const newTransaction = {
@@ -1991,7 +2670,7 @@
             
             // --- BUDGET REMINDER CHECK (Only for expenses) ---
             let budgetExceeded = false;
-            let budgetWarningDetails = null; // Stores { category, period, limit, spent, percentage } for modal
+            let budgetWarningDetails = null; 
             
             if (newTransaction.type === 'expense' && budgets[newTransaction.category]) {
                 const categoryBudgets = budgets[newTransaction.category];
@@ -2002,19 +2681,20 @@
 
                 for (const period of periodsToCheck) {
                     const limit = Number(categoryBudgets[period]);
+                    
                     if (limit > 0) {
                         // Calculate current spending for this period *before* adding the new transaction
                         let spentThisPeriod = getCurrentSpending(newTransaction.category, period);
                         const newTotal = spentThisPeriod + amount;
                         const percentage = (newTotal / limit) * 100;
 
-                        if (newTotal > limit && spentThisPeriod <= limit) {
+                        if (newTotal > limit) {
                             // 1. Budget just exceeded (100% +)
                             const overAmount = formatCurrency(newTotal - limit);
                             showMessage(`⚠️ ${period} Budget Exceeded! ${newTransaction.category} limit was ${formatCurrency(limit)}. You are now over by ${overAmount}.`, 'error');
                             budgetExceeded = true;
                             break; 
-                        } else if (newTotal >= 0.9 * limit && spentThisPeriod < 0.9 * limit) {
+                        } else if (newTotal >= 0.9 * limit && !budgetWarningDetails) {
                             // 2. Budget just crossed the 90% warning threshold (90% to 100%)
                             budgetWarningDetails = {
                                 category: newTransaction.category,
@@ -2056,7 +2736,7 @@
          * @param {string} type - 'expense' or 'income'.
          */
         const addImportedTransaction = (description, amount, category, type = 'expense') => {
-             const newId = Date.now().toString() + Math.random().toString(16).slice(2);
+             const newId = generateId();
              
              // Use current timestamp for imported transactions
              const timestampSeconds = Math.floor(Date.now() / 1000); 
@@ -2106,12 +2786,12 @@
                                 <span class="text-lg font-bold text-blue-600">${formatCurrency(limit)}</span>
                                 
                                 <button class="edit-budget-btn text-gray-400 hover:text-blue-500 transition-colors duration-150 p-1 rounded"
-                                        data-category="${category}" data-period="${period}" title="Edit Budget">
+                                         data-category="${category}" data-period="${period}" title="Edit Budget">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                 </button>
 
                                 <button class="delete-budget-btn text-gray-400 hover:text-red-500 transition-colors duration-150 p-1 rounded"
-                                        data-category="${category}" data-period="${period}" title="Remove Budget">
+                                         data-category="${category}" data-period="${period}" title="Remove Budget">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 </button>
                             </div>
@@ -2152,7 +2832,6 @@
                     
                     // 2. Load the amount and update the period label
                     updateBudgetPeriod(period); // Must call first to update currentBudgetPeriod and label
-                    // loadBudgetForEdit is implicitly called by updateBudgetPeriod now due to the render logic
                     
                     // 3. Scroll to the top of the form for immediate editing
                     document.getElementById('budget-settings-view').scrollTo({ top: 0, behavior: 'smooth' });
@@ -2207,6 +2886,32 @@
             }
         });
         
+        // --- Goal Form Submission ---
+        document.getElementById('goal-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('goal-name').value.trim();
+            const targetAmount = parseFloat(document.getElementById('goal-target-amount').value);
+            const targetDate = document.getElementById('goal-target-date').value;
+
+            if (name && !isNaN(targetAmount) && targetAmount > 0) {
+                const newGoal = {
+                    id: generateId(),
+                    name: name,
+                    targetAmount: targetAmount,
+                    currentAmount: 0,
+                    targetDate: targetDate || null,
+                    createdAt: Date.now()
+                };
+                goals.push(newGoal);
+                saveGoals();
+                document.getElementById('goal-form').reset();
+                showMessage(`Goal "${name}" set! Start depositing now.`, 'success');
+            } else {
+                showMessage("Please enter a valid goal name and target amount.", 'error');
+            }
+        });
+        // --- End Goal Form Submission ---
+        
         // --- Budget Form Submission ---
         document.getElementById('budget-form').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -2225,7 +2930,7 @@
                 
                 // Reset form
                 document.getElementById('budget-amount').value = '';
-                document.getElementById('budget-category').selectedIndex = 0;
+                // document.getElementById('budget-category').selectedIndex = 0; // Keep current selected category
                 
                 showMessage(`Budget of ${formatCurrency(amount)} set for ${category} (${period}).`);
             } else {
@@ -2282,12 +2987,57 @@
             }
         });
         // --- End Import Form Submission ---
+        
+        // --- Recurring Form Submission (NEW) ---
+        document.getElementById('recurring-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const type = document.querySelector('input[name="recurringType"]:checked').value;
+            const description = document.getElementById('recurring-description').value.trim();
+            const amount = parseFloat(document.getElementById('recurring-amount').value);
+            const category = document.getElementById('recurring-category').value;
+            const frequency = document.getElementById('recurring-frequency').value;
+            
+            let day = 1; // Default day for Monthly/Yearly
+            if (frequency === 'Monthly' || frequency === 'Yearly') {
+                day = parseInt(document.getElementById('recurring-day-of-month').value, 10) || 1;
+                // Clamp day between 1 and 28 for safety in all months
+                day = Math.max(1, Math.min(28, day));
+            } else if (frequency === 'Weekly') {
+                day = parseInt(document.getElementById('recurring-day-of-week').value, 10) || 0;
+            }
+
+            if (description && !isNaN(amount) && amount > 0) {
+                 const newRule = {
+                     id: generateId(),
+                     description,
+                     amount: amount,
+                     type,
+                     category,
+                     frequency,
+                     day, // Day of month (1-28) or day of week (0-6)
+                     createdAt: Date.now(),
+                     lastGenerated: null // Will be set after first generation
+                 };
+                 
+                 recurringTransactions.push(newRule);
+                 saveRecurringTransactions();
+                 
+                 // Clear form (except defaults)
+                 document.getElementById('recurring-description').value = '';
+                 document.getElementById('recurring-amount').value = '';
+                 document.getElementById('recurring-day-of-month').value = '1';
+                 
+                 showMessage(`Recurring rule for ${description} saved. Transactions will generate automatically.`, 'success');
+            } else {
+                 showMessage("Please enter valid description, amount (> 0), and frequency settings.", 'error');
+            }
+        });
+        // --- End Recurring Form Submission ---
 
 
         window.onload = function () {
             // Initial styling for analytics selectors
-            // Set 'month' as active by default (it's checked in HTML)
-            // This now calls updateAnalyticsPeriod which handles both time and trend selector visuals
             updateAnalyticsPeriod('month');
             
             // Initial styling for transaction type selector
@@ -2297,10 +3047,18 @@
             // Initial styling for budget period selector
             document.querySelector('input[name="budgetPeriod"][value="Monthly"]').checked = true;
             updateBudgetPeriod('Monthly');
+            
+            // Initial recurring view setup
+            document.querySelector('input[name="recurringType"][value="expense"]').checked = true;
+            toggleRecurringDayInput(document.getElementById('recurring-frequency').value);
+
 
             // Initial styling for navigation
             document.getElementById('nav-dashboard').classList.add('nav-button-active');
             document.getElementById('nav-analytics').classList.remove('nav-button-active');
+            document.getElementById('nav-recurring').classList.remove('nav-button-active');
+            document.getElementById('nav-goals').classList.remove('nav-button-active');
+
 
             showView('dashboard'); 
             initLocalData();
@@ -2310,13 +3068,16 @@
         window.showView = showView;
         window.updateTrendChart = updateTrendChart;
         window.updateAnalyticsPeriod = updateAnalyticsPeriod; 
-        window.updateTypeSelector = updateTypeSelector; // Expose the new function
-        window.renderAllTransactions = renderAllTransactions; // Expose the filter function globally
-        window.saveBudgets = saveBudgets; // Expose save budgets for general use
-        window.loadBudgetForEdit = loadBudgetForEdit; // Expose load budget for editing
-        window.updateBudgetPeriod = updateBudgetPeriod; // Expose new period function
-        window.renderBudgetSettings = renderBudgetSettings; // FIX: Expose renderBudgetSettings globally
-        window.closeBudgetWarning = closeBudgetWarning; // Expose modal close function
+        window.updateTypeSelector = updateTypeSelector; 
+        window.renderAllTransactions = renderAllTransactions; 
+        window.saveBudgets = saveBudgets; 
+        window.loadBudgetForEdit = loadBudgetForEdit; 
+        window.updateBudgetPeriod = updateBudgetPeriod; 
+        window.renderBudgetSettings = renderBudgetSettings; 
+        window.closeBudgetWarning = closeBudgetWarning; 
+        window.toggleRecurringDayInput = toggleRecurringDayInput;
+        window.renderGoalsProgress = renderGoalsProgress; // Expose goal renderer
+        window.depositToGoal = depositToGoal; // Expose deposit function
     </script>
 </body>
 </html>
