@@ -1,80 +1,47 @@
-# 🧾 The Ledger — Smart Budget Tracker
+# 💰 The Ledger — Smart Budget Tracker
 
-> A clean, responsive, and intelligent web app to track income & expenses effortlessly — no backend required.
+> **Track. Analyze. Save.**  
+> A modern, lightweight, and privacy-focused web app to manage your expenses and income — beautifully built with pure HTML, CSS, and JavaScript.
 
-[Live Demo](https://bramhendra-c.github.io/Budget_Tracker)  
-
----
-
-## Table of Contents
-
-1. [Overview](#overview)  
-2. [Features](#features)  
-3. [Tech Stack](#tech-stack)  
-4. [Screenshots / Demo](#screenshots--demo)  
-5. [Getting Started](#getting-started)  
-   - [Prerequisites](#prerequisites)  
-   - [Installation](#installation)  
-   - [Usage](#usage)  
-6. [How It Works](#how-it-works)  
-7. [Future Enhancements](#future-enhancements)  
-8. [Contributing](#contributing)  
-9. [License](#license)  
-10. [Acknowledgments](#acknowledgments)  
+🔗 **Live Demo:** [bramhendra-c.github.io/Budget_Tracker](https://bramhendra-c.github.io/Budget_Tracker)
 
 ---
 
-## Overview
+## 🧭 Overview
 
-The Ledger is a simple, browser-based personal finance manager built with HTML, CSS, and JavaScript.  
-It helps users log daily transactions, view visual insights into spending, and manage budgets — all while storing data locally (no server / backend needed).
+**The Ledger** is a sleek and efficient **personal finance tracker** designed to help users visualize their spending patterns and maintain control over their budgets — all without the need for servers or logins.
 
-Ideal for users who want a lightweight, private, offline-capable app to understand their finances.
-
----
-
-## Features
-
-- ✅ **Add / Edit / Delete Transactions** — add income or expense entries  
-- 📊 **Interactive Dashboard** — real-time summary: balance, total income, total expenses  
-- 📈 **Charts & Analytics** — see trends over time  
-- 🗂 **Category Filters** — filter transactions by category (e.g. Food, Transport)  
-- 💾 **Offline Support / Local Storage** — data stays in your browser  
-- 📱 **Responsive UI** — works across desktop, tablet, and mobile  
-- 🎨 **Minimal & Elegant Design** — easy on the eyes, focused on usability  
+Every transaction is securely stored in your browser using **Local Storage**, ensuring your data stays **private and persistent**. The app provides clear financial insights and a delightful user experience across all devices.
 
 ---
 
-## Tech Stack
+## ✨ Key Features
 
-| Component | Purpose |
-|---|---|
-| HTML5 | Markup & structure |
-| CSS3 | Styling, layout, responsive design |
-| JavaScript (Vanilla) | Core logic, event handling |
-| LocalStorage API | Data persistence in the browser |
-| (Optional) Charting Library | Rendering charts / graphs (e.g. Chart.js, ApexCharts) |
-
----
-
-link to live demo: [bramhendra-c.github.io/Budget_Tracker](https://bramhendra-c.github.io/Budget_Tracker)
+- ✅ **Add / Edit / Delete Transactions** – Easily manage your daily income and expenses.  
+- 📊 **Live Summary Dashboard** – Instantly view total balance, income, and expenses.  
+- 🧠 **Smart Categorization** – Organize transactions by custom categories.  
+- 💾 **Offline Support** – No internet or backend required; data saved locally.  
+- 📱 **Responsive Design** – Optimized for desktop, tablet, and mobile.  
+- 🎨 **Minimal & Elegant UI** – Built with a clean, user-first design.  
+- ⚡ **Instant Updates** – Dynamic rendering with zero reloads.  
 
 ---
 
-## Getting Started
+## 🧩 Tech Stack
 
-### Prerequisites
+| Technology | Purpose |
+|-------------|----------|
+| **HTML5** | Structuring the interface |
+| **CSS3** | Styling, layout, and responsiveness |
+| **JavaScript (Vanilla)** | Logic, DOM manipulation, and interactivity |
+| **LocalStorage API** | Client-side data persistence |
 
-You don’t need a backend or server — just a modern browser (Chrome, Firefox, Edge, Safari).  
-(Optional) If you want to run a local server for convenience:
+---
 
-- Node.js & `http-server`  
-- Or VSCode Live Server, etc.
+## 🚀 Getting Started
 
-### Installation
+### 1. Clone the Repository
 
-1. **Clone the repository**
-
-   ```sh
-   git clone https://github.com/Bramhendra-C/Budget_Tracker.git
-   cd Budget_Tracker
+```bash
+git clone https://github.com/Bramhendra-C/Budget_Tracker.git
+cd Budget_Tracker
