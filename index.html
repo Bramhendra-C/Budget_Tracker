@@ -910,8 +910,8 @@
                 renderBudgetProgress(); // Update the dashboard view
                 renderBudgetSettings(); // Update the settings list
             } catch (e) {
-                console.error("Error saving budgets.", 'error');
-                showMessage("Error saving budgets.", 'error');
+                console.error("Error saving budgets. Details:", e); // IMPROVED LOGGING
+                showMessage("Error saving budgets. Storage capacity may be full.", 'error'); // IMPROVED MESSAGE
             }
         }
 
@@ -931,8 +931,8 @@
                 renderRecurringTransactions();
                 renderActiveRecurringRules(); // NEW CALL for dashboard update
             } catch (e) {
-                console.error("Error saving recurring transactions.", 'error');
-                showMessage("Error saving recurring transactions.", 'error');
+                console.error("Error saving recurring transactions. Details:", e); // IMPROVED LOGGING
+                showMessage("Error saving recurring transactions. Storage capacity may be full.", 'error'); // IMPROVED MESSAGE
             }
         }
         
@@ -953,8 +953,8 @@
                 renderActiveGoalsDashboard(); // ADDED CALL for dashboard update
                 checkGoalReminders(); // NEW CALL
             } catch (e) {
-                console.error("Error saving goals.", 'error');
-                showMessage("Error saving goals.", 'error');
+                console.error("Error saving goals. Details:", e); // IMPROVED LOGGING
+                showMessage("Error saving goals. Storage capacity may be full.", 'error'); // IMPROVED MESSAGE
             }
         }
 
@@ -998,8 +998,10 @@
                 }
                 
             } catch (e) {
-                console.error("Error saving data.", 'error');
-                showMessage("Error saving data.", 'error');
+                console.error("Error saving data. Details:", e); // IMPROVED LOGGING
+                if (!suppressMessage) { // CHECKING SUPPRESS MESSAGE
+                     showMessage("Error saving data. Storage capacity may be full.", 'error'); // IMPROVED MESSAGE
+                }
             }
         }
         
@@ -1641,7 +1643,7 @@
             // Time input is left blank to allow user to set it.
             document.getElementById('time').value = '';
 
-            saveTransactions(); // Initial rendering of summary and recents, and checks reminders
+            saveTransactions(true); // Initial rendering of summary and recents, and checks reminders (suppress error here)
             populateCategoryFilter(); // Populate the transaction filter options
             populateBudgetCategoryFilter(); // Populate the budget setting options
             populateRecurringCategoryFilter(); // NEW: Populate recurring category options
@@ -1951,6 +1953,242 @@
         
         // --- Analytics Chart Functions (using function declarations for hoisting) ---
 
+        const chartColors = ['#dc2626', '#f97316', '#8b5cf6', '#06b6d4', '#eab308', '#4b5563', '#9ca3af']; // Using Red as primary expense color
+        const incomeColors = ['#059669', '#34d399', '#60a5fa', '#3b82f6', '#10b981'];
+
+        /**
+         * Helper function to render a single Doughnut Chart (used for both Income and Expense)
+         */
+        function renderDoughnutChart(chartVar, ctxId, labels, data, totalMetricId, totalColor, colors, centerTextId) {
+             if (chartVar && chartVar.destroy) chartVar.destroy();
+
+             const totalAmount = data.reduce((sum, val) => sum + val, 0);
+            
+             // Update Total Metric Display below chart
+             const totalMetricElement = document.getElementById(totalMetricId);
+             if (totalMetricElement) {
+                totalMetricElement.textContent = formatCurrency(totalAmount);
+                totalMetricElement.classList.remove('text-red-600', 'text-emerald-600');
+                // Apply the correct color (Red for expense, Green for income)
+                totalMetricElement.classList.add(totalColor === 'text-red-600' ? 'text-red-600' : 'text-emerald-600');
+             }
+
+             const percentageElement = document.getElementById(centerTextId.replace('-text', '-percentage'));
+             if (percentageElement) {
+                 percentageElement.textContent = ' '; // Set to empty string
+             }
+            
+             const ctx = document.getElementById(ctxId)?.getContext('2d');
+             if (!ctx) return null;
+            
+             // Create and return the new chart instance
+             const newChart = new Chart(ctx, {
+                 type: 'doughnut',
+                 data: {
+                     labels: labels,
+                     datasets: [{
+                         data: data,
+                         backgroundColor: colors.slice(0, labels.length),
+                         hoverOffset: 10,
+                         borderWidth: 8, 
+                         borderColor: 'white' 
+                     }]
+                 },
+                 options: {
+                     responsive: true, maintainAspectRatio: false,
+                     cutout: '80%', 
+                     plugins: { 
+                         legend: { 
+                             position: 'right', 
+                             labels: { 
+                                 usePointStyle: true, 
+                                 boxWidth: 8, 
+                                 padding: 15, 
+                                 color: '#374151', 
+                                 font: { weight: '600' } 
+                             } 
+                         }, 
+                         title: { display: false },
+                         datalabels: {
+                             formatter: (value, context) => {
+                                 if (totalAmount === 0) return '';
+                                 const percentage = Math.round((value / totalAmount) * 100);
+                                 return percentage > 10 ? percentage + '%' : '';  
+                             },
+                             color: '#fff',
+                             font: { weight: 'extrabold', size: 14 }, 
+                             textShadowBlur: 4,
+                             textShadowColor: 'rgba(0, 0, 0, 0.5)'
+                         },
+                          tooltip: {
+                             callbacks: {
+                                 label: function(context) {
+                                     const value = context.parsed;
+                                     const percentage = totalAmount === 0 ? 0 : Math.round((value / totalAmount) * 100);
+                                     return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
+                                 }
+                             }
+                         }
+                     }
+                 },
+                 plugins: [ChartDataLabels]
+             });
+             return newChart;
+        }
+
+        function renderTrendChart(data, viewMode) {
+            if (trendChart) trendChart.destroy();
+
+            const trendCtx = document.getElementById('spendingTrendChart')?.getContext('2d');
+            if (!trendCtx) return;
+            
+            const mainExpense = '#dc2626'; 
+            const mainIncome = '#059669'; 
+            const deficitColor = '#dc2626'; 
+            const surplusColor = '#059669'; 
+            const gridColor = 'rgba(0, 0, 0, 0.08)'; 
+            
+            let datasets = [];
+            let chartType = 'bar';
+            let yAxesTitle = 'Amount (₹)';
+
+            const baseBarProps = {
+                borderWidth: 0,
+                borderRadius: 8, 
+                barPercentage: 0.7, 
+                categoryPercentage: 0.8,
+                backgroundColor: (context) => {
+                    const chart = context.chart;
+                    const { ctx, chartArea } = chart;
+                    if (!chartArea) return null;
+                    
+                    const label = context.dataset.label;
+                    const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+
+                    if (label === 'Expenses') {
+                        gradient.addColorStop(0, '#991b1b'); 
+                        gradient.addColorStop(1, mainExpense); 
+                        return gradient;
+                    } else if (label === 'Income') {
+                        gradient.addColorStop(0, '#047857'); 
+                        gradient.addColorStop(1, mainIncome); 
+                        return gradient;
+                    } else if (label === 'Net Flow') {
+                        const value = context.parsed.y;
+                        const color = value >= 0 ? surplusColor : deficitColor;
+                        const lightColor = value >= 0 ? '#34d399' : '#fca5a5';
+                        
+                        gradient.addColorStop(0, color);
+                        gradient.addColorStop(1, lightColor);
+                        return gradient;
+                    }
+                    return mainExpense; 
+                }
+            };
+
+            if (viewMode === 'expense') {
+                datasets.push({ label: 'Expenses', data: data.trendDataExpense, ...baseBarProps });
+                yAxesTitle = 'Expense Amount (₹)';
+            } else if (viewMode === 'income_expense') {
+                datasets.push({ label: 'Income', data: data.trendDataIncome, ...baseBarProps });
+                datasets.push({ label: 'Expenses', data: data.trendDataExpense, ...baseBarProps });
+                yAxesTitle = 'Amount (₹)';
+            } else if (viewMode === 'net_flow') {
+                datasets.push({ label: 'Net Flow', data: data.trendDataNetFlow, ...baseBarProps });
+                yAxesTitle = 'Net Balance (₹)';
+            }
+            
+            const periodText = (currentPeriod) => {
+                if (currentPeriod === 'day') return 'Daily';
+                if (currentPeriod === 'week') return 'Weekly';
+                if (currentPeriod === 'month') return 'Monthly';
+                if (currentPeriod === 'year') return 'Yearly';
+                return 'Trend';
+            };
+            document.getElementById('trend-chart-title').textContent = `${periodText(currentPeriod)} Spending Trends`;
+
+            trendChart = new Chart(trendCtx, {
+                type: chartType, 
+                data: { labels: data.trendLabels, datasets: datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: false, 
+                            grid: { display: false },
+                            ticks: { color: '#4b5563', font: { weight: '600' } }
+                        },
+                        y: {
+                            stacked: false, 
+                            beginAtZero: true, 
+                            title: { display: true, text: yAxesTitle, color: '#1f2937', font: { weight: 'bold' } }, 
+                            ticks: { color: '#4b5563', callback: (value) => formatCurrency(value) },
+                            grid: { color: gridColor, lineWidth: 1 } 
+                        }
+                    },
+                    
+                    plugins: { 
+                        legend: { 
+                            display: viewMode === 'income_expense', 
+                            position: 'bottom',
+                            labels: { 
+                                usePointStyle: true, 
+                                boxWidth: 6, 
+                                color: '#374151', 
+                                font: { weight: '600' } 
+                            }
+                        }, 
+                        title: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(31, 41, 55, 0.9)', 
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 14 },
+                            cornerRadius: 6,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += formatCurrency(context.parsed.y);
+                                    return label;
+                                }
+                            }
+                        },
+                    }
+                },
+                plugins: []
+            });
+        }
+
+        function renderCharts(data) {
+             const selectedView = document.querySelector('input[name="trendView"]:checked')?.value || 'expense';
+             renderTrendChart(data, selectedView);
+            
+             breakdownChart = renderDoughnutChart(
+                 breakdownChart, 
+                 'categoryBreakdownChart', 
+                 data.breakdownLabels, 
+                 data.breakdownData, 
+                 'breakdown-total', 
+                 'text-red-600', // Expense
+                 chartColors,
+                 'breakdown-center-text' 
+             );
+
+             incomeChart = renderDoughnutChart(
+                 incomeChart, 
+                 'incomeBreakdownChart', 
+                 data.incomeLabels, 
+                 data.incomeData, 
+                 'income-breakdown-total', 
+                 'text-emerald-600', // Income
+                 incomeColors,
+                 'income-center-text' 
+             );
+        }
+
         function updateTrendChart() {
             const selectedValue = document.querySelector('input[name="trendView"]:checked').value;
             
@@ -1968,25 +2206,253 @@
             });
 
             if (aggregatedData) { 
-                // Render the chart based on the selected view
-                // (renderCharts relies on updateTrendChart)
-                // renderTrendChart(aggregatedData, selectedValue); // Placeholder call
+                renderTrendChart(aggregatedData, selectedValue);
+            }
+        }
+
+        function aggregateData(allTransactions, period) {
+             const transactionsWithTimestamp = allTransactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
+             const periodExpenses = new Map(); 
+             const periodIncomes = new Map(); 
+             const categoryExpenses = new Map(); 
+             const categoryIncomes = new Map(); 
+             const today = new Date();
+             
+             let timeWindowStart;
+             let totalPeriods;
+             let getLabel;
+             let getKey;
+
+             if (period === 'day') {
+                 totalPeriods = 7;
+                 timeWindowStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (totalPeriods - 1));
+                 timeWindowStart.setHours(0, 0, 0, 0); 
+                 getKey = (date) => date.toLocaleDateString('en-US');
+                 getLabel = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+             } else if (period === 'week') {
+                 totalPeriods = 6;
+                 const startOfThisWeek = new Date(today);
+                 startOfThisWeek.setDate(today.getDate() - today.getDay());
+                 startOfThisWeek.setHours(0, 0, 0, 0);
+                 
+                 timeWindowStart = new Date(startOfThisWeek);
+                 timeWindowStart.setDate(startOfThisWeek.getDate() - (totalPeriods - 1) * 7);
+
+                 getKey = (date) => {
+                     const d = new Date(date);
+                     d.setDate(d.getDate() - d.getDay()); 
+                     return d.toLocaleDateString('en-US');
+                 };
+                 getLabel = (date) => {
+                     const d = new Date(date);
+                     d.setDate(d.getDate() - d.getDay()); 
+                     return 'Wk of ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                 };
+             } else if (period === 'month') {
+                 totalPeriods = 6;
+                 timeWindowStart = new Date(today.getFullYear(), today.getMonth() - (totalPeriods - 1), 1);
+                 getKey = (date) => date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+                 getLabel = (date) => ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()] + ' ' + date.getFullYear().toString().slice(-2);
+             } else if (period === 'year') {
+                 totalPeriods = 3;
+                 timeWindowStart = new Date(today.getFullYear() - (totalPeriods - 1), 0, 1);
+                 getKey = (date) => date.getFullYear().toString();
+                 getLabel = (date) => date.getFullYear().toString();
+             } else {
+                 return aggregateData(allTransactions, 'month');
+             }
+
+             timeWindowStart.setHours(0, 0, 0, 0);
+
+
+             transactionsWithTimestamp.forEach(t => {
+                 const date = new Date(t.timestamp.seconds * 1000);
+                 
+                 if (date >= timeWindowStart) {
+                     const key = getKey(date);
+                     const amount = Number(t.amount);
+                     const category = t.category || 'Uncategorized';
+
+                     if (t.type === 'expense') {
+                         periodExpenses.set(key, (periodExpenses.get(key) || 0) + amount);
+                         categoryExpenses.set(category, (categoryExpenses.get(category) || 0) + amount);
+                     } else if (t.type === 'income') {
+                         periodIncomes.set(key, (periodIncomes.get(key) || 0) + amount);
+                         categoryIncomes.set(category, (categoryIncomes.get(category) || 0) + amount); 
+                     }
+                 }
+             });
+
+             const trendLabels = [];
+             const trendDataExpense = [];
+             const trendDataIncome = [];
+             const trendDataNetFlow = [];
+
+             for (let i = 0; i < totalPeriods; i++) {
+                 let d = new Date(timeWindowStart);
+                 let key;
+                 let label;
+                 
+                 if (period === 'day') {
+                     d.setDate(timeWindowStart.getDate() + i);
+                 } else if (period === 'week') {
+                     d.setDate(timeWindowStart.getDate() + (i * 7));
+                 } else if (period === 'month') {
+                     d.setMonth(timeWindowStart.getMonth() + i);
+                 } else if (period === 'year') {
+                     d.setFullYear(timeWindowStart.getFullYear() + i);
+                 }
+
+                 key = getKey(d);
+                 label = getLabel(d);
+
+                 const expense = periodExpenses.get(key) || 0;
+                 const income = periodIncomes.get(key) || 0;
+                 
+                 trendLabels.push(label);
+                 trendDataExpense.push(expense);
+                 trendDataIncome.push(income);
+                 trendDataNetFlow.push(income - expense);
+             }
+
+             const breakdownLabels = Array.from(categoryExpenses.keys());
+             const breakdownData = Array.from(categoryExpenses.values());
+
+             const incomeLabels = Array.from(categoryIncomes.keys()); 
+             const incomeData = Array.from(categoryIncomes.values()); 
+
+             return { 
+                 trendLabels, 
+                 trendDataExpense, 
+                 trendDataIncome, 
+                 trendDataNetFlow, 
+                 breakdownLabels, 
+                 breakdownData,
+                 incomeLabels, 
+                 incomeData    
+             };
+        }
+
+
+        // --- List View Functions ---
+
+        /**
+         * Renders all transactions grouped by date for the full list view, including monthly and daily summaries.
+         */
+        function renderAllTransactions() {
+            const listElement = document.getElementById('grouped-transaction-list');
+            listElement.innerHTML = '';
+
+            // Get selected category filter
+            const filterElement = document.getElementById('category-filter');
+            const selectedCategory = filterElement ? filterElement.value : 'All';
+
+            // 1. Filter transactions based on selection
+            let filteredTransactions = transactions.filter(t => t.timestamp && typeof t.timestamp.seconds === 'number');
+            
+            if (selectedCategory !== 'All') {
+                // FIX: Filter strictly by selected category
+                filteredTransactions = filteredTransactions.filter(t => t.category === selectedCategory);
+            }
+            
+            if (filteredTransactions.length === 0) {
+                listElement.innerHTML = `<p class="text-center text-gray-500 p-8">No transactions found for category: ${selectedCategory}.</p>`;
+                return;
+            }
+
+            // 2. Sort, calculate flows, and group
+            const sortedTransactions = [...filteredTransactions].sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+            const monthlyNetFlows = calculateMonthlyNetFlow(filteredTransactions); 
+            const dailyNetFlows = calculateDailyNetFlow(filteredTransactions); 
+
+            let lastMonthKey = null;
+
+            // Group transactions by date key
+            const groupedByDateKey = sortedTransactions.reduce((acc, t) => {
+                const dateKey = formatDateKey(t.timestamp.seconds * 1000, true); 
+                if (!acc[dateKey]) acc[dateKey] = [];
+                acc[dateKey].push(t);
+                return acc;
+            }, {});
+
+            
+            // 3. Render groups and insert monthly/daily summaries
+            for (const dateKey in groupedByDateKey) {
+                const dayGroup = groupedByDateKey[dateKey];
+                const firstTransactionDate = new Date(dayGroup[0].timestamp.seconds * 1000);
+                const currentMonthKey = firstTransactionDate.getFullYear() + '-' + String(firstTransactionDate.getMonth() + 1).padStart(2, '0');
+
+                // --- MONTHLY SUMMARY CHECK ---
+                if (lastMonthKey !== currentMonthKey) {
+                    const netFlow = monthlyNetFlows.get(currentMonthKey) || 0;
+                    const isSurplus = netFlow >= 0;
+                    const flowClass = isSurplus ? 'text-emerald-600' : 'text-red-600';
+                    const flowSign = isSurplus ? 'Surplus' : 'Deficit';
+                    
+                    const monthName = firstTransactionDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+
+                    const monthHeader = document.createElement('div');
+                    monthHeader.className = 'py-3 px-4 bg-blue-50/70 border-b border-blue-200 shadow-inner mb-2 flex justify-between items-center mt-6 rounded-xl';
+                    
+                    monthHeader.innerHTML = `
+                        <h4 class="text-base font-bold text-gray-800">Monthly Net Flow (${monthName})</h4>
+                        <div class="text-right">
+                            <p class="text-xl font-extrabold ${flowClass}">${flowSign} ${formatCurrency(Math.abs(netFlow))}</p>
+                        </div>
+                    `;
+                    listElement.appendChild(monthHeader);
+                    lastMonthKey = currentMonthKey; 
+                }
+                
+                // --- DAILY NET FLOW SUMMARY ---
+                const dailyFlow = dailyNetFlows.get(dateKey) || 0;
+                const isDailySurplus = dailyFlow >= 0;
+                const dailyFlowClass = isDailySurplus ? 'text-emerald-600' : 'text-red-600';
+                const dailyFlowSign = isDailySurplus ? 'Savings' : 'Deficit';
+                const dateDisplay = formatDateKey(firstTransactionDate.getTime(), false);
+
+                const dailyHeader = document.createElement('div');
+                dailyHeader.className = 'py-2 px-4 bg-gray-100/70 rounded-lg flex justify-between items-center mt-3 border-l-4 border-gray-300';
+                
+                dailyHeader.innerHTML = `
+                    <h4 class="text-sm font-bold text-gray-800">${dateDisplay}</h4>
+                    <div class="text-right">
+                        <p class="text-xs font-semibold text-gray-600">Daily Net Flow (${dailyFlowSign})</p>
+                        <p class="text-lg font-extrabold ${dailyFlowClass}">${formatCurrency(Math.abs(dailyFlow))}</p>
+                    </div>
+                `;
+                listElement.appendChild(dailyHeader);
+
+
+                // --- RENDER TRANSACTIONS ---
+                const groupContainer = document.createElement('div');
+                groupContainer.className = 'primary-card p-4 space-y-2';
+
+                // Transactions for the day
+                dayGroup.forEach(t => {
+                    groupContainer.appendChild(createTransactionElement(t, true));
+                });
+
+                listElement.appendChild(groupContainer);
             }
         }
         
-        function aggregateData(allTransactions, period) {
-             // Placeholder implementation, should return structured data for charts
-            return { trendLabels: [], trendDataExpense: [], trendDataIncome: [], trendDataNetFlow: [], breakdownLabels: [], breakdownData: [], incomeLabels: [], incomeData: [] };
-        }
-        
-        function renderCharts(data) {
-             // Placeholder implementation, relies on Chart.js logic
+        function calculateMonthlyNetFlow(allTransactions) {
+             const monthlyFlow = new Map();
+             allTransactions.forEach(t => {
+                 if (!t.timestamp || typeof t.timestamp.seconds !== 'number') return; 
+
+                 const date = new Date(t.timestamp.seconds * 1000);
+                 const yearMonthKey = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+                 const amount = Number(t.amount);
+                 const flow = t.type === 'income' ? amount : -amount;
+                 
+                 monthlyFlow.set(yearMonthKey, (monthlyFlow.get(yearMonthKey) || 0) + flow);
+             });
+             return monthlyFlow;
         }
 
-        function renderAllTransactions() {
-             // Placeholder implementation
-        }
-        
+
         function renderSummary() {
             let totalIncome = 0;
             let totalExpense = 0;
@@ -2038,22 +2504,24 @@
             const sortedTransactions = [...validTransactions].sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
             const dailyNetFlows = calculateDailyNetFlow(validTransactions); 
 
-            const groupedByDay = sortedTransactions.reduce((acc, t) => {
+            // Group transactions by date key
+            const groupedByDateKey = sortedTransactions.reduce((acc, t) => {
                 const dateKey = formatDateKey(t.timestamp.seconds * 1000, true);
                 if (!acc[dateKey]) acc[dateKey] = [];
                 acc[dateKey].push(t);
                 return acc;
             }, {});
 
+
             let transactionCount = 0;
             let daysRendered = 0;
             const maxDays = 3; 
-            const maxTransactions = 3; // MAX TRANSACTIONS TO SHOW ON DASHBOARD
+            const maxTransactions = 2; // UPDATED: MAX TRANSACTIONS TO SHOW ON DASHBOARD
 
-            for (const dateKey in groupedByDay) {
+            for (const dateKey in groupedByDateKey) {
                 if (daysRendered >= maxDays || transactionCount >= maxTransactions) break;
 
-                const dayGroup = groupedByDay[dateKey];
+                const dayGroup = groupedByDateKey[dateKey];
 
                 // 1. --- DAILY NET FLOW HEADER ---
                 const dailyFlow = dailyNetFlows.get(dateKey) || 0;
@@ -2251,6 +2719,7 @@
                 document.getElementById('analytics-view').classList.remove('hidden');
                 document.getElementById('nav-analytics').classList.add('nav-button-active');
                 
+                // Re-calculate and render charts upon entering analytics view
                 aggregatedData = aggregateData(transactions, currentPeriod); 
                 renderCharts(aggregatedData);
             } else if (viewName === 'list') {
