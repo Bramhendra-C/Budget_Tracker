@@ -886,8 +886,13 @@
             'Shopping', 'Utilities', 'Other'
         ];
         // Note: 'Savings/Goal Contribution' is an implicit expense category for goal deposits only.
-        const ALL_CATEGORIES = [...EXPENSE_CATEGORIES, 'Salary (Income)', 'Savings/Goal Contribution'];
-        const INCOME_CATEGORIES = ['Salary (Income)', 'Other'];
+        const ALL_CATEGORIES = [
+            ...EXPENSE_CATEGORIES, 
+            'Salary (Income)', 
+            'Savings/Goal Contribution', 
+            'Savings/Goal Withdrawal' // ADDED for withdrawal transactions
+        ];
+        const INCOME_CATEGORIES = ['Salary (Income)', 'Other', 'Savings/Goal Withdrawal']; // ADDED for withdrawal transactions
         
         // Helper to generate a unique ID
         const generateId = () => Date.now().toString() + Math.random().toString(16).slice(2);
@@ -1507,6 +1512,7 @@
                 const statusText = percentage >= 100 ? 'Achieved!' : `Saving (${Math.round(percentage)}%)`;
                 const dateDisplay = goal.targetDate ? `Target: ${new Date(goal.targetDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}` : 'No Target Date';
                 
+                // --- IMPRESSIVE GOAL CARD UI ---
                 const goalElement = document.createElement('div');
                 goalElement.className = 'primary-card p-5 space-y-3 border-l-4 border-blue-600 shadow-xl';
                 goalElement.innerHTML = `
@@ -1540,13 +1546,27 @@
                         </p>
                      </div>
 
-                     <!-- Deposit Input -->
-                     <div class="mt-4 flex space-x-2 pt-3 border-t border-gray-100">
-                         <input type="number" id="deposit-amount-${goal.id}" placeholder="Deposit Amount" step="1" min="1"
-                                 class="flex-1 rounded-lg border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500 text-sm">
-                         <button class="deposit-btn py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition duration-150 text-sm flex-shrink-0" data-id="${goal.id}">
-                             Deposit
-                         </button>
+                     <!-- Deposit/Withdrawal Inputs Container -->
+                     <div class="mt-4 pt-3 border-t border-gray-100 space-y-3">
+                         <h5 class="text-xs font-bold text-gray-700">Manage Contributions:</h5>
+                         
+                         <!-- Deposit Input (Green/Positive) -->
+                         <div class="flex space-x-2">
+                             <input type="number" id="deposit-amount-${goal.id}" placeholder="Deposit Amount" step="1" min="1"
+                                     class="flex-1 rounded-lg border-emerald-300 shadow-sm p-2 border focus:ring-emerald-500 focus:border-emerald-500 text-sm">
+                             <button class="deposit-btn py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition duration-150 text-sm flex-shrink-0" data-id="${goal.id}">
+                                 Deposit
+                             </button>
+                         </div>
+                         
+                         <!-- Withdrawal Input (Red/Negative) -->
+                         <div class="flex space-x-2">
+                             <input type="number" id="withdraw-amount-${goal.id}" placeholder="Withdraw Amount" step="1" min="1"
+                                     class="flex-1 rounded-lg border-red-300 shadow-sm p-2 border focus:ring-red-500 focus:border-red-500 text-sm">
+                             <button class="withdraw-btn py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition duration-150 text-sm flex-shrink-0" data-id="${goal.id}">
+                                 Withdraw
+                             </button>
+                         </div>
                      </div>
                 `;
                 listElement.appendChild(goalElement);
@@ -1564,6 +1584,22 @@
                         document.getElementById(inputId).value = ''; // Clear input
                     } else {
                         showMessage("Please enter a valid deposit amount.", 'warning');
+                    }
+                });
+            });
+            
+            // NEW: Attach Withdrawal Listeners
+            listElement.querySelectorAll('.withdraw-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const goalId = e.currentTarget.dataset.id;
+                    const inputId = `withdraw-amount-${goalId}`;
+                    const withdrawAmount = parseFloat(document.getElementById(inputId).value);
+                    
+                    if (!isNaN(withdrawAmount) && withdrawAmount > 0) {
+                        withdrawFromGoal(goalId, withdrawAmount);
+                        document.getElementById(inputId).value = ''; // Clear input
+                    } else {
+                        showMessage("Please enter a valid withdrawal amount.", 'warning');
                     }
                 });
             });
@@ -1590,7 +1626,6 @@
             goals[goalIndex].currentAmount += amount;
             
             // 2. IMPORTANT: Create a corresponding Expense Transaction
-            // This ensures the money is removed from the current balance (balance decreases)
             const newGoalTransaction = {
                 id: generateId(),
                 description: `Goal Deposit: ${goals[goalIndex].name}`,
@@ -1611,6 +1646,42 @@
             if (goals[goalIndex].currentAmount >= goals[goalIndex].targetAmount) {
                  showMessage(`🎉 Goal Reached: ${goals[goalIndex].name}!`, 'success');
             }
+        }
+        
+        /**
+         * Core logic for withdrawing funds from a goal.
+         */
+        function withdrawFromGoal(goalId, amount) {
+            const goalIndex = goals.findIndex(g => g.id === goalId);
+            if (goalIndex === -1) return;
+
+            const goal = goals[goalIndex];
+
+            if (amount > goal.currentAmount) {
+                showMessage(`Cannot withdraw ${formatCurrency(amount)}. Only ${formatCurrency(goal.currentAmount)} available in ${goal.name}.`, 'error');
+                return;
+            }
+
+            // 1. Update the goal's current amount (Deduct)
+            goal.currentAmount -= amount;
+
+            // 2. IMPORTANT: Create a corresponding Income Transaction
+            const newWithdrawalTransaction = {
+                id: generateId(),
+                description: `Goal Withdrawal: ${goal.name}`,
+                amount: amount,
+                type: 'income', // It's an ADDITION to liquid balance
+                category: 'Savings/Goal Withdrawal', // New income category
+                timestamp: { seconds: Math.floor(Date.now() / 1000) }
+            };
+            
+            transactions.push(newWithdrawalTransaction);
+            
+            // Save both goals and transactions
+            saveGoals(); // Updates goal status
+            saveTransactions(); // Updates net balance
+
+            showMessage(`₹${amount.toFixed(2)} withdrawn from ${goal.name}. Liquid balance increased.`, 'warning');
         }
         
         function deleteGoal(goalId) {
@@ -1643,7 +1714,7 @@
             // Time input is left blank to allow user to set it.
             document.getElementById('time').value = '';
 
-            saveTransactions(true); // Initial rendering of summary and recents, and checks reminders (suppress error here)
+            saveTransactions(); // Initial rendering of summary and recents, and checks reminders
             populateCategoryFilter(); // Populate the transaction filter options
             populateBudgetCategoryFilter(); // Populate the budget setting options
             populateRecurringCategoryFilter(); // NEW: Populate recurring category options
@@ -2504,7 +2575,6 @@
             const sortedTransactions = [...validTransactions].sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
             const dailyNetFlows = calculateDailyNetFlow(validTransactions); 
 
-            // Group transactions by date key
             const groupedByDateKey = sortedTransactions.reduce((acc, t) => {
                 const dateKey = formatDateKey(t.timestamp.seconds * 1000, true);
                 if (!acc[dateKey]) acc[dateKey] = [];
@@ -2512,11 +2582,10 @@
                 return acc;
             }, {});
 
-
             let transactionCount = 0;
             let daysRendered = 0;
             const maxDays = 3; 
-            const maxTransactions = 2; // UPDATED: MAX TRANSACTIONS TO SHOW ON DASHBOARD
+            const maxTransactions = 2; // LIMIT TO 2 TRANSACTIONS ON DASHBOARD
 
             for (const dateKey in groupedByDateKey) {
                 if (daysRendered >= maxDays || transactionCount >= maxTransactions) break;
@@ -2823,6 +2892,7 @@
         window.depositToGoal = depositToGoal; 
         window.editRecurring = editRecurring; 
         window.editGoal = editGoal;
+        window.withdrawFromGoal = withdrawFromGoal; // Expose new function
 
         // --- Event Listeners and Main Execution ---
 
