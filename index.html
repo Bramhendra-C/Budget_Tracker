@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Budget Tracker (Mobile App)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css"> 
+</head>
+<body class="min-h-screen"> 
+
+    <div id="message-box" class="bg-green-500 text-white shadow-lg"></div>
+
+    <div id="budget-warning-modal" class="">
+        <div id="budget-warning-content">
+            <svg class="w-16 h-16 text-yellow-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.772-1.333-2.68-1.333-3.452 0L2.268 16c-.772 1.333.194 3 1.732 3z"></path></svg>
+            <h3 class="text-2xl font-extrabold text-gray-800 mb-2">Budget Limit Warning!</h3>
+            <p id="warning-message-text" class="text-lg text-gray-600 mb-6 font-medium">
+                The Food (Monthly) budget has reached 95% of its ₹5,000 limit.
+            </p>
+            
+            <div class="space-y-3">
+                <button id="modal-edit-budget-btn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl transition duration-150 shadow-md shadow-blue-500/50">
+                    <span class="flex items-center justify-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-5L19 3m0 0l-5 5m5-5v5m0-5h5"></path></svg>
+                        <span>EDIT BUDGET</span>
+                    </span>
+                </button>
+                <button onclick="closeBudgetWarning()" class="w-full py-3 text-gray-600 hover:text-gray-900 font-semibold rounded-xl transition duration-150 border border-gray-300">
+                    CONTINUE (Ignore for Now)
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="app-frame relative overflow-hidden">
+        
+        <header class="p-6 pb-2 sticky-header">
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">
+                The Ledger
+            </h1>
+            <p class="text-xs text-gray-500 mt-1">Local Mode Active</p>
+        </header>
+
+        <div class="p-4 pt-0">
+
+            <div id="dashboard-view">
+                <div class="main-balance-card p-6 mb-6">
+                    <div class="flex justify-between items-center text-indigo-200 mb-2">
+                        <h3 class="text-lg font-semibold">Current Net Balance</h3>
+                    </div>
+                    <p id="balance" class="text-6xl font-extrabold balance-glow">₹0.00</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                    <div class="small-card p-4 border-l-4 border-emerald-500 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">Total Income</h3>
+                            <p id="income" class="text-xl font-bold income-text">₹0.00</p>
+                        </div>
+                            <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8v2m0 4v2m-6 3h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <div class="small-card p-4 border-l-4 border-red-500 flex items-center justify-between">
+                            <div>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">Total Expense</h3>
+                            <p id="expense" class="text-xl font-bold expense-text">₹0.00</p>
+                        </div>
+                        <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l-1 12H6L5 9z"></path></svg>
+                    </div>
+                </div>
+                
+                <div class="primary-card p-6 mb-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-gray-800">Quick Add Transaction</h2>
+                        <button onclick="showView('import-transactions')" class="text-xs text-gray-500 font-medium hover:text-blue-600 transition-colors">
+                            <span class="flex items-center space-x-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v-1a4 4 0 014-4h8m-12 1h12m-6-8l-4 4 4 4"></path></svg>
+                                <span>Import</span>
+                            </span>
+                        </button>
+                    </div>
+                    
+                    <form id="transaction-form" class="space-y-6">
+
+                        <div class="text-center pb-4">
+                            <label for="amount" class="block text-sm font-medium text-gray-500">AMOUNT</label>
+                            <div class="flex items-center justify-center space-x-1 mt-1">
+                                <span class="text-4xl font-extrabold text-gray-700">₹</span>
+                                <input type="number" id="amount" placeholder="0.00" step="0.01" required
+                                        class="text-5xl font-extrabold text-gray-900 border-b-2 border-gray-200 focus:border-blue-600 w-2/3 text-center p-0 appearance-none focus:outline-none bg-transparent transition-colors duration-200">
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-2 p-1 bg-gray-100 rounded-xl justify-center text-sm font-medium">
+                            <label class="flex-1 type-selector">
+                                <input type="radio" name="transactionType" value="expense" checked class="hidden" onchange="updateTypeSelector(this)">
+                                <span id="type-expense-label" class="block text-center py-2 px-3 rounded-xl cursor-pointer transition-all duration-200 bg-red-600 text-white shadow-lg shadow-red-500/30">
+                                    <span class="font-extrabold">- EXPENSE</span>
+                                </span>
+                            </label>
+                            <label class="flex-1 type-selector">
+                                <input type="radio" name="transactionType" value="income" class="hidden" onchange="updateTypeSelector(this)">
+                                <span id="type-income-label" class="block text-center py-2 px-3 rounded-xl cursor-pointer transition-all duration-200 text-gray-700 hover:bg-white">
+                                    <span class="font-extrabold">+ INCOME</span>
+                                </span>
+                            </label>
+                        </div>
+                        
+                        <div class="space-y-4 pt-2">
+                            <div>
+                                <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                                <input type="text" id="description" placeholder="e.g., Groceries, Paycheck, Rent" required
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="col-span-2">
+                                    <label for="date" class="block text-sm font-medium text-gray-700">Date (Optional)</label>
+                                    <input type="date" id="date" 
+                                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                </div>
+                                <div>
+                                    <label for="time" class="block text-sm font-medium text-gray-700">Time</label>
+                                    <input type="time" id="time" 
+                                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                                <select id="category"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                    <option value="Uncategorized">Uncategorized</option>
+                                    <option value="Food">Food</option>
+                                    <option value="Transportation">Transportation</option>
+                                    <option value="Housing">Housing</option>
+                                    <option value="Entertainment">Entertainment</option>
+                                    <option value="Shopping">Shopping</option>
+                                    <option value="Utilities">Utilities</option>
+                                    <option value="Salary (Income)">Salary (Income)</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl transition duration-150 ease-in-out shadow-xl shadow-blue-500/50 flex items-center justify-center space-x-2 transform hover:scale-[1.01]">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m-4-8h8"></path></svg>
+                            <span>CONFIRM TRANSACTION</span>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="primary-card p-6">
+                    <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-gray-800">Recent Transactions</h2>
+                            <button onclick="showView('list')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">View All</button>
+                    </div>
+
+                    <div id="transaction-list-dashboard" class="max-h-[50vh] space-y-3">
+                        <p id="loading-message" class="text-center text-gray-500 p-4">Loading transactions...</p>
+                    </div>
+                </div>
+                
+                <div class="primary-card p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Current Budget Progress</h2>
+                        <button onclick="showView('budget-settings')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">Set/Edit Budgets</button>
+                    </div>
+                    
+                    <div id="budget-progress-list" class="space-y-4">
+                        <p class="text-center text-gray-500 text-sm">No budgets set. Click 'Set/Edit Budgets' to start tracking goals!'</p>
+                    </div>
+                </div>
+                
+                <div class="primary-card p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Active Recurring</h2>
+                        <button onclick="showView('recurring')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">Manage</button>
+                    </div>
+                    <div id="active-recurring-dashboard-list" class="space-y-3">
+                           <p class="text-center text-gray-500 text-sm">Loading recurring schedules...</p>
+                    </div>
+                </div>
+                <div class="primary-card p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Savings Goals</h2>
+                        <button onclick="showView('goals')" class="text-sm text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors">View All</button>
+                    </div>
+                    <div id="active-goals-dashboard-list" class="space-y-4">
+                           <p class="text-center text-gray-500 text-sm">Loading goals...</p>
+                    </div>
+                </div>
+                </div>
+            <div id="analytics-view" class="hidden">
+                <div class="analytics-card p-6 mb-6">
+                    <h2 id="trend-chart-title" class="text-xl font-bold text-gray-900 mb-4">Monthly Spending Trends</h2>
+                    
+                    <div class="grid grid-cols-4 gap-2 view-selector-group mb-6 justify-center text-gray-700 font-semibold">
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="timePeriod" value="day" class="hidden" onchange="updateAnalyticsPeriod('day')">
+                            <span id="period-day-label" class="block text-center py-2 px-1 text-xs rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white/10 text-gray-700">Day</span>
+                        </label>
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="timePeriod" value="week" class="hidden" onchange="updateAnalyticsPeriod('week')">
+                            <span id="period-week-label" class="block text-center py-2 px-1 text-xs rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white/10 text-gray-700">Week</span>
+                        </label>
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="timePeriod" value="month" checked class="hidden" onchange="updateAnalyticsPeriod('month')">
+                            <span id="period-month-label" class="block text-center py-2 px-1 text-xs rounded-lg cursor-pointer transition-colors duration-200 bg-blue-600 text-white">Month</span>
+                        </label>
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="timePeriod" value="year" class="hidden" onchange="updateAnalyticsPeriod('year')">
+                            <span id="period-year-label" class="block text-center py-2 px-1 text-xs rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white/10 text-gray-700">Year</span>
+                        </label>
+                    </div>
+
+                    <div class="flex space-x-2 view-selector-group mb-6 justify-center">
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="trendView" value="expense" checked class="hidden" onchange="updateTrendChart()">
+                            <span id="trend-expense-label" class="block text-center py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors duration-200 bg-blue-600 text-white">Expense Only</span>
+                        </label>
+                        <label class="flex-1">
+                            <input type="radio" name="trendView" value="income_expense" class="hidden" onchange="updateTrendChart()">
+                            <span id="trend-income-expense-label" class="block text-center py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors duration-200 text-gray-700 hover:bg-white/10">Income + Expense</span>
+                        </label>
+                        <label class="flex-1">
+                            <input type="radio" name="trendView" value="net_flow" class="hidden" onchange="updateTrendChart()">
+                            <span id="trend-net-flow-label" class="block text-center py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors duration-200 text-gray-700 hover:bg-white/10">Net Flow</span>
+                        </label>
+                    </div>
+
+                    <div class="h-80 w-full p-2 rounded-xl border border-gray-200 shadow-inner">
+                        <canvas id="spendingTrendChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="analytics-card p-6 mb-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">Expense Breakdown</h2>
+                    <p class="text-sm text-gray-500 mb-4">Expenses by category for the selected period.</p>
+                    <div class="relative h-80 w-full flex justify-center items-center p-2 rounded-xl border border-gray-200 shadow-inner">
+                            <canvas id="categoryBreakdownChart" class="max-h-80"></canvas>
+                            <div id="breakdown-center-text" class="absolute flex flex-col items-center justify-center text-center hidden">
+                                <p class="text-base font-semibold text-gray-600">Total %</p>
+                                <p id="breakdown-center-percentage" class="text-3xl font-extrabold text-red-600 mt-1">100%</p>
+                            </div>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-gray-100 text-center">
+                        <p class="text-base font-semibold text-gray-600">Total Expenses Analyzed</p>
+                        <p id="breakdown-total" class="text-3xl font-extrabold text-red-600 mt-1">₹0.00</p>
+                    </div>
+                </div>
+
+                <div class="analytics-card p-6 mb-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">Income Breakdown</h2>
+                    <p class="text-sm text-gray-500 mb-4">Income by category for the selected period.</p>
+                    <div class="relative h-80 w-full flex justify-center items-center p-2 rounded-xl border border-gray-200 shadow-inner">
+                            <canvas id="incomeBreakdownChart" class="max-h-80"></canvas>
+                             <div id="income-center-text" class="absolute flex flex-col items-center justify-center text-center hidden">
+                                <p class="text-base font-semibold text-gray-600">Total %</p>
+                                <p id="income-center-percentage" class="text-3xl font-extrabold text-emerald-600 mt-1">100%</p>
+                            </div>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-gray-100 text-center">
+                        <p id="income-breakdown-total-label" class="text-base font-semibold text-gray-600">Total Income Analyzed</p>
+                        <p id="income-breakdown-total" class="text-3xl font-extrabold text-emerald-600 mt-1">₹0.00</p>
+                    </div>
+                </div>
+            </div>
+            <div id="budget-settings-view" class="hidden">
+                   <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
+                    <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 class="text-xl font-extrabold text-gray-800">Set Spending Budgets</h2>
+                    <div class="w-8"></div> 
+                </header>
+                
+                <div class="primary-card p-6 mb-6">
+                    <p class="text-sm text-gray-600 mb-4">Set your maximum spending goal for any category across different time periods.</p>
+                    
+                    <div class="grid grid-cols-3 gap-2 view-selector-group mb-6 justify-center text-gray-700 font-semibold">
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="budgetPeriod" value="Daily" class="hidden" onchange="updateBudgetPeriod('Daily')">
+                            <span id="budget-period-daily" class="block text-center py-2 px-1 text-sm rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white/10 text-gray-700">Daily</span>
+                        </label>
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="budgetPeriod" value="Monthly" checked class="hidden" onchange="updateBudgetPeriod('Monthly')">
+                            <span id="budget-period-monthly" class="block text-center py-2 px-1 text-sm rounded-lg cursor-pointer transition-colors duration-200 bg-blue-600 text-white">Monthly</span>
+                        </label>
+                        <label class="flex-1 trend-selector">
+                            <input type="radio" name="budgetPeriod" value="Yearly" class="hidden" onchange="updateBudgetPeriod('Yearly')">
+                            <span id="budget-period-yearly" class="block text-center py-2 px-1 text-sm rounded-lg cursor-pointer transition-colors duration-200 hover:bg-white/10 text-gray-700">Yearly</span>
+                        </label>
+                    </div>
+
+                    <form id="budget-form" class="space-y-4">
+                        <div>
+                               <label for="budget-category" class="block text-sm font-medium text-gray-700">Category</label>
+                            <select id="budget-category" onchange="loadBudgetForEdit(this.value)"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                </select>
+                        </div>
+                        <div>
+                               <label for="budget-amount" class="block text-sm font-medium text-gray-700"><span id="budget-period-label">Monthly</span> Budget Amount (₹)</label>
+                               <input type="number" id="budget-amount" placeholder="5000" step="1" min="0" required
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition duration-150">
+                            SAVE BUDGET
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="primary-card p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Current Budgets</h3>
+                    <div id="current-budgets-list" class="space-y-3">
+                        </div>
+                </div>
+            </div>
+            <div id="recurring-transactions-view" class="hidden">
+                <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
+                    <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 class="text-xl font-extrabold text-gray-800">Recurring Schedules</h2>
+                    <div class="w-8"></div> 
+                </header>
+
+                <div class="primary-card p-6 mb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Add New Recurring Transaction</h3>
+                    
+                    <form id="recurring-form" class="space-y-4">
+                        <div class="flex space-x-2 p-1 bg-gray-100 rounded-xl justify-center text-sm font-medium">
+                            <label class="flex-1 type-selector">
+                                <input type="radio" name="recurringType" value="expense" checked class="hidden">
+                                <span class="block text-center py-2 px-3 rounded-xl cursor-pointer transition-all duration-200 bg-red-600 text-white shadow-lg shadow-red-500/30">
+                                    <span class="font-extrabold">- EXPENSE</span>
+                                </span>
+                            </label>
+                            <label class="flex-1 type-selector">
+                                <input type="radio" name="recurringType" value="income" class="hidden">
+                                <span class="block text-center py-2 px-3 rounded-xl cursor-pointer transition-all duration-200 text-gray-700 hover:bg-white">
+                                    <span class="font-extrabold">+ INCOME</span>
+                                </span>
+                            </label>
+                        </div>
+                        
+                        <div>
+                            <label for="recurring-description" class="block text-sm font-medium text-gray-700">Description</label>
+                            <input type="text" id="recurring-description" placeholder="e.g., Salary, Monthly Rent" required
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="recurring-amount" class="block text-sm font-medium text-gray-700">Amount (₹)</label>
+                                <input type="number" id="recurring-amount" placeholder="5000" step="1" min="0" required
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="recurring-category" class="block text-sm font-medium text-gray-700">Category</label>
+                                <select id="recurring-category" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                    </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="recurring-frequency" class="block text-sm font-medium text-gray-700">Frequency</label>
+                            <select id="recurring-frequency" onchange="toggleRecurringDayInput(this.value)" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                <option value="Monthly">Monthly</option>
+                                <option value="Weekly">Weekly</option>
+                                <option value="Yearly">Yearly</option>
+                                <option value="Daily">Daily</option>
+                            </select>
+                        </div>
+                        
+                        <div id="recurring-day-input-monthly">
+                            <label for="recurring-day-of-month" class="block text-sm font-medium text-gray-700">Day of the Month (1-28)</label>
+                            <input type="number" id="recurring-day-of-month" placeholder="1" min="1" max="28" value="1"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div id="recurring-day-input-weekly" class="hidden">
+                             <label for="recurring-day-of-week" class="block text-sm font-medium text-gray-700">Day of the Week</label>
+                             <select id="recurring-day-of-week" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition duration-150 shadow-md shadow-green-500/30">
+                            SAVE RECURRING RULE
+                        </button>
+                    </form>
+                </div>
+
+                <div class="primary-card p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Active Recurring Rules</h3>
+                    <div id="active-recurring-list" class="space-y-3">
+                           <p class="text-center text-gray-500 p-2">No recurring rules set.</p>
+                    </div>
+                </div>
+            </div>
+            <div id="savings-goals-view" class="hidden">
+                <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
+                    <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 class="text-xl font-extrabold text-gray-800">Savings Goals</h2>
+                    <div class="w-8"></div> 
+                </header>
+
+                <div class="primary-card p-6 mb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Create New Goal</h3>
+                    <form id="goal-form" class="space-y-4">
+                        <div>
+                            <label for="goal-name" class="block text-sm font-medium text-gray-700">Goal Name</label>
+                            <input type="text" id="goal-name" placeholder="e.g., New Laptop, Vacation Fund" required
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="goal-target-amount" class="block text-sm font-medium text-gray-700">Target Amount (₹)</label>
+                                <input type="number" id="goal-target-amount" placeholder="150000" step="1" min="1" required
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="goal-target-date" class="block text-sm font-medium text-gray-700">Target Date (Optional)</label>
+                                <input type="date" id="goal-target-date" 
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition duration-150 shadow-md shadow-blue-500/30">
+                            SET GOAL
+                        </button>
+                    </form>
+                </div>
+
+                <div class="primary-card p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Active Goals</h3>
+                    <div id="active-goals-list" class="space-y-4">
+                           <p class="text-center text-gray-500 p-2">No savings goals defined.</p>
+                    </div>
+                </div>
+            </div>
+            <div id="import-transactions-view" class="hidden">
+                   <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
+                    <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 class="text-xl font-extrabold text-gray-800">Import Transactions</h2>
+                    <div class="w-8"></div> 
+                </header>
+
+                <div class="primary-card p-6 mb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Simulated Document Import (CSV/PDF/DOC)</h3>
+                    <p class="text-sm text-gray-600 mb-4">Paste transaction data below (one transaction per line: **AMOUNT, Description, Category**). Use a **negative** sign (e.g., -500) for **Expenses** and **positive/no sign** (e.g., 5000) for **Income**.</p>
+                    <p class="text-xs text-gray-500 mb-4 font-mono bg-gray-100 p-2 rounded">Example: **-500.00, Coffee, Food** OR **80000.00, Paycheck, Salary (Income)**</p>
+                    
+                    <form id="import-form" class="space-y-4">
+                        <textarea id="import-data" rows="6" placeholder="Paste bank statement lines here (e.g., -125.50, Uber Ride, Transportation)"
+                                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        
+                        <button type="submit" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition duration-150 shadow-md shadow-green-500/30">
+                            PROCESS AND IMPORT TRANSACTIONS
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div id="full-list-view" class="hidden">
+                <header class="flex items-center justify-between p-4 sticky-header -mx-4 -mt-4 mb-4">
+                    <button onclick="showView('dashboard')" class="text-gray-600 hover:text-blue-600 p-2 -ml-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 class="text-xl font-extrabold text-gray-800">View All</h2>
+                    <div class="w-8"></div> </header>
+                
+                <div class="p-4 pt-0 mb-4">
+                    <label for="category-filter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Category:</label>
+                    <select id="category-filter" onchange="renderAllTransactions()"
+                            class="block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        </select>
+                </div>
+                <div id="grouped-transaction-list" class="space-y-6">
+                    </div>
+            </div>
+            </div>
+    </div>
+
+    <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 max-w-full mx-auto bg-white/90 border-t border-gray-200 shadow-2xl z-20 h-16 rounded-t-2xl flex justify-around items-center"
+            style="backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+        <button id="nav-dashboard" onclick="showView('dashboard')" class="flex flex-col items-center nav-button-active focus:outline-none transition-colors duration-200">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"></path></svg>
+            <span class="text-xs font-semibold">Dashboard</span>
+        </button>
+
+        <button id="nav-analytics" onclick="showView('analytics')" class="flex flex-col items-center text-gray-500 hover:text-blue-600 transition-colors duration-200 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+            <span class="text-xs font-medium">Analytics</span>
+        </button>
+        
+        <button id="nav-recurring" onclick="showView('recurring')" class="flex flex-col items-center text-gray-500 hover:text-blue-600 transition-colors duration-200 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 13H4m2 7l-2.293-2.293c-.63-.63-.184-1.707.707-1.707H17m0 0a2 2 0 100 4 2 2 0 000-4z"></path></svg>
+            <span class="text-xs font-medium">Recurring</span>
+        </button>
+        
+        <button id="nav-goals" onclick="showView('goals')" class="flex flex-col items-center text-gray-500 hover:text-blue-600 transition-colors duration-200 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6m4 0a1 1 0 100-2 1 1 0 000 2zm0 0l-1.558-.871a2 2 0 00-1.884 0L2 19h10zm7 0a1 1 0 100-2 1 1 0 000 2zm0 0l-1.558-.871a2 2 0 00-1.884 0L17 19h10zM12 4v16m-4-8h8"></path></svg>
+            <span class="text-xs font-medium">Goals</span>
+        </button>
+    </nav>
+    <script src="app.js"></script>
+</body>
+</html>

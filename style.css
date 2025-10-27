@@ -1,0 +1,237 @@
+/* Custom styles for the app's visual appeal */
+body {
+    font-family: 'Inter', sans-serif;
+    /* Use a color that extends across the entire screen */
+    background-color: #e5e7eb; 
+    overscroll-behavior: none; 
+}
+
+/* Mobile Frame Simulation: The default is FULL SCREEN on phone */
+.app-frame {
+    width: 100%; 
+    max-width: 100%;
+    min-height: 100vh;
+    background-color: white; 
+    padding-bottom: 72px; 
+    box-shadow: none; /* Removed default shadow for full screen look */
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    margin: 0 auto;
+}
+
+/* --- Media Query for Tablet/Desktop (Full-Screen on laptop) --- */
+
+/* If you want it constrained on a tablet, but full screen on a laptop, 
+   you would typically use a tablet size breakpoint (e.g., max-width 767px) 
+   to define mobile view.
+
+   *** To achieve a true full-screen laptop experience, we rely on the default 
+   width: 100% and will remove the centering constraints added by the previous step. *** */
+
+/* If you want the mobile FRAME APPEARANCE on LAPTOP, use this: 
+@media (min-width: 768px) {
+    .app-frame {
+        max-width: 450px;
+        margin: 0 auto;
+        min-height: calc(100vh - 64px); 
+        margin-top: 32px; 
+        margin-bottom: 32px;
+        box-shadow: 0 0 25px rgba(0, 0, 0, 0.2); 
+        border-radius: 1.5rem;
+    }
+}
+*/
+/* Since the user wants full-screen on laptop, we will simply leave .app-frame at 100% width
+   and adjust the fixed navigation bar to match. */
+
+/* --- The fixed navigation bar also needs to be full screen --- */
+/* The max-w-[450px] on the nav bar needs to be adjusted in HTML using Tailwind classes to be screen-fittable.
+   We only need to constrain the nav bar if the app frame itself is constrained. */
+
+/* --- UPDATED COLORS (Expense is now RED) --- */
+.income-text { color: #059669; } /* Emerald-600 (Green) */
+.expense-text { color: #dc2626; } /* Red-600 (EXPENSE COLOR) */
+/* --- END UPDATED COLORS --- */
+
+/* Premium Main Card Gradient */
+.main-balance-card {
+    background-image: linear-gradient(to right bottom, #2563eb, #4f46e5); /* blue-600 to indigo-600 */
+    color: white;
+    box-shadow: 0 18px 40px -8px rgba(37, 99, 235, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.15); /* Stronger blue shadow */
+    border-radius: 1.5rem; 
+}
+
+/* Balance text with subtle white glow */
+.balance-glow {
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+}
+
+.primary-card {
+    background-color: white;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08); /* Enhanced card shadow */
+    border-radius: 1.5rem; /* rounded-3xl */
+}
+
+/* Analytics Card is now the same as primary-card for light theme */
+.analytics-card {
+    background-color: white; 
+    color: #1f2937; 
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08);
+    border-radius: 1.5rem;
+}
+
+.small-card {
+    background-color: white;
+    box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.1);
+    border-radius: 0.75rem; /* rounded-xl */
+}
+
+/* Sticky Header with Blur Effect */
+.sticky-header {
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+/* Input & Select Styling for dropdown indicator */
+select#category, input[type="date"], select#category-filter, input[type="time"], select#recurring-frequency, select#recurring-day-of-month {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236B7280'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.5em 1.5em;
+}
+
+/* Nav button active state */
+.nav-button-active { color: #2563eb !important; }
+
+/* Chart selectors */
+.trend-selector input:checked + span {
+    background-color: #1d4ed8; 
+    color: white;
+    box-shadow: 0 2px 8px rgba(29, 78, 216, 0.4);
+}
+.trend-selector span {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Chart View Selectors */
+.view-selector-group {
+    border-radius: 1rem;
+    padding: 0.5rem;
+    background-color: #f3f4f6;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+/* RESTORED: Light theme view selectors */
+.analytics-card .view-selector-group {
+    background-color: #f3f4f6; 
+}
+.analytics-card .trend-selector input:checked + span {
+    background-color: #2563eb; /* Blue for light theme */
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+}
+.analytics-card .trend-selector span {
+    color: #374151 !important; /* Dark text for light background */
+}
+.analytics-card .trend-selector input:checked + span {
+    color: white !important;
+}
+
+
+/* Message Box Styling */
+#message-box {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    /* Max width is only applied to center the box on huge screens, but 
+       we keep it responsive */
+    max-width: 430px; 
+    width: 90%; 
+    transform: translateX(-50%);
+    z-index: 50;
+    padding: 1rem 2rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    pointer-events: none;
+}
+
+.show {
+    opacity: 1;
+}
+
+/* Custom style for the dominant amount input */
+#amount {
+    -moz-appearance: textfield; /* Firefox */
+}
+#amount::-webkit-inner-spin-button, 
+#amount::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Transaction List Styling for cleaner look */
+.transaction-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Budget progress bar colors */
+.bg-budget-green { background-color: #059669; }
+.bg-budget-orange { background-color: #f59e0b; }
+.bg-budget-red { background-color: #dc2626; }
+
+/* Full-screen Modal for Budget Warning */
+#budget-warning-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); 
+    z-index: 60; 
+    display: none;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+#budget-warning-content {
+    max-width: 90%;
+    width: 400px;
+    background-color: white;
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    transform: scale(0.95);
+    opacity: 0;
+    transition: all 0.3s ease-in-out;
+}
+
+#budget-warning-modal.active #budget-warning-content {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* Recurring List Item Styling */
+.recurring-item {
+     border-left: 5px solid #2563eb;
+     background-color: #f8fafc;
+     border-radius: 0.75rem;
+     transition: all 0.15s ease-in-out;
+     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.recurring-item:hover {
+     background-color: #f0f4ff;
+     box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+}
