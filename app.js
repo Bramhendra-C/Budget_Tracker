@@ -204,6 +204,90 @@ function saveTransactions(suppressMessage = false) {
     }
 }
 
+// --- Export/Download History Logic (NEW) ---
+
+function openExportModal() {
+    document.getElementById('export-modal').style.display = 'flex';
+    // Set default dates to the last 30 days
+    setExportRange(30);
+}
+
+function closeExportModal() {
+    document.getElementById('export-modal').style.display = 'none';
+}
+
+function setExportRange(days) {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+
+    const formatToDateString = (date) => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    document.getElementById('export-start-date').value = formatToDateString(startDate);
+    document.getElementById('export-end-date').value = formatToDateString(endDate);
+}
+
+function exportTransactionsToCSV(startDateString, endDateString) {
+    const startDate = new Date(startDateString);
+    const endDate = new Date(endDateString);
+    endDate.setHours(23, 59, 59, 999); // Include transactions up to the end of the end date
+
+    // Headers for the CSV file
+    let csv = "Date,Time,Type,Amount (INR),Category,Description,Transaction ID\n";
+    
+    // Filter and sort transactions
+    const filteredTransactions = transactions.filter(t => {
+        if (!t.timestamp || typeof t.timestamp.seconds !== 'number') return false;
+
+        const transactionDate = new Date(t.timestamp.seconds * 1000);
+        return transactionDate >= startDate && transactionDate <= endDate;
+    }).sort((a, b) => a.timestamp.seconds - b.timestamp.seconds); // Sort oldest first
+
+    if (filteredTransactions.length === 0) {
+        showMessage('No transactions found in the selected date range.', 'warning');
+        return;
+    }
+
+    filteredTransactions.forEach(t => {
+        const dateObj = new Date(t.timestamp.seconds * 1000);
+        const date = dateObj.toLocaleDateString('en-IN');
+        const time = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const type = t.type.charAt(0).toUpperCase() + t.type.slice(1);
+        const amount = t.amount.toFixed(2);
+        const category = t.category.replace(/"/g, '""'); // Escape quotes
+        const description = t.description.replace(/"/g, '""');
+        const id = t.id;
+
+        // Note: For expenses, we typically add a negative sign in CSV for clarity
+        const finalAmount = type === 'Expense' ? `-${amount}` : amount;
+
+        csv += `"${date}","${time}","${type}",${finalAmount},"${category}","${description}",${id}\n`;
+    });
+
+    // Create a Blob and download it
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Ledger_Export_${startDateString}_to_${endDateString}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showMessage('Transaction history downloaded successfully!', 'success');
+        closeExportModal();
+    }
+}
+
+// --- End Export/Download History Logic ---
+
+
 // --- Goal Reminder Modal Logic ---
 
 function resetModalStyle() {
@@ -1080,7 +1164,7 @@ function renderBudgetSettings() {
 
                         <button class="delete-budget-btn text-gray-400 hover:text-red-500 transition-colors duration-150 p-1 rounded"
                                     data-category="${category}" data-period="${period}" title="Remove Budget">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></path></svg>
                         </button>
                     </div>
                 `;
@@ -1716,6 +1800,7 @@ function renderSummary() {
     const balance = totalIncome - totalExpense;
     const balanceElement = document.getElementById('balance');
     
+    // 1. Balance color logic remains but the text also scales if needed (via CSS)
     if (balance < 0) {
         balanceElement.classList.remove('text-white');
         balanceElement.classList.add('text-red-300');
@@ -1727,8 +1812,16 @@ function renderSummary() {
     }
 
     balanceElement.textContent = formatCurrency(balance);
-    document.getElementById('income').textContent = formatCurrency(totalIncome);
-    document.getElementById('expense').textContent = formatCurrency(totalExpense);
+    
+    // 2. Ensuring the colors are applied correctly (using the custom CSS classes)
+    const incomeElement = document.getElementById('income');
+    const expenseElement = document.getElementById('expense');
+    
+    incomeElement.textContent = formatCurrency(totalIncome);
+    expenseElement.textContent = formatCurrency(totalExpense);
+    
+    incomeElement.classList.add('income-text');
+    expenseElement.classList.add('expense-text');
 }
 
 function renderRecentTransactions() {
@@ -1846,6 +1939,7 @@ function getIcon(type) {
 function createTransactionElement(t, isFullList = false) {
     const isIncome = t.type === 'income';
     const sign = isIncome ? '+' : '-' ;
+    // Using the custom classes for color
     const amountClass = isIncome ? 'income-text' : 'expense-text';
     
     const date = new Date(t.timestamp?.seconds * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -1942,8 +2036,8 @@ function showView(viewName) {
     document.getElementById('recurring-transactions-view').classList.add('hidden'); 
     document.getElementById('savings-goals-view').classList.add('hidden'); 
 
-    // Reset navigation bar colors
-    const navButtons = ['nav-dashboard', 'nav-analytics', 'nav-recurring', 'nav-goals'];
+    // Reset navigation bar colors - UPDATED to include 'nav-budget'
+    const navButtons = ['nav-dashboard', 'nav-analytics', 'nav-budget', 'nav-recurring', 'nav-goals'];
     navButtons.forEach(id => {
          const btn = document.getElementById(id);
          if (btn) {
@@ -1968,6 +2062,7 @@ function showView(viewName) {
         renderAllTransactions(); 
     } else if (viewName === 'budget-settings') {
         document.getElementById('budget-settings-view').classList.remove('hidden');
+        document.getElementById('nav-budget').classList.add('nav-button-active'); // Set new budget button as active
         renderBudgetSettings();
     } else if (viewName === 'import-transactions') {
         document.getElementById('import-transactions-view').classList.remove('hidden');
@@ -2035,6 +2130,7 @@ function initializeApp() {
     // Initial styling for navigation
     document.getElementById('nav-dashboard').classList.add('nav-button-active');
     document.getElementById('nav-analytics').classList.remove('nav-button-active');
+    document.getElementById('nav-budget').classList.remove('nav-button-active');
     document.getElementById('nav-recurring').classList.remove('nav-button-active');
     document.getElementById('nav-goals').classList.remove('nav-button-active');
 
@@ -2063,6 +2159,12 @@ window.depositToGoal = depositToGoal;
 window.editRecurring = editRecurring; 
 window.editGoal = editGoal;
 window.withdrawFromGoal = withdrawFromGoal; 
+
+// New Exposed Functions for Export
+window.openExportModal = openExportModal;
+window.closeExportModal = closeExportModal;
+window.setExportRange = setExportRange;
+
 
 // --- Event Listeners and Main Execution ---
 
@@ -2292,3 +2394,18 @@ document.getElementById('recurring-form').addEventListener('submit', (e) => {
     }
 });
 // --- End Recurring Form Submission ---
+
+// --- Export Form Submission Listener (NEW) ---
+document.getElementById('export-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const startDate = document.getElementById('export-start-date').value;
+    const endDate = document.getElementById('export-end-date').value;
+    
+    if (startDate && endDate) {
+        exportTransactionsToCSV(startDate, endDate);
+    } else {
+        showMessage("Please select both a start and end date.", 'error');
+    }
+});
+// --- End Export Form Submission Listener ---
