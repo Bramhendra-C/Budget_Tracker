@@ -122,38 +122,36 @@ select#category, input[type="date"], select#category-filter, input[type="time"],
 /* Nav button active state */
 .nav-button-active { color: #2563eb !important; }
 
-/* Chart selectors */
-.trend-selector input:checked + span {
-    background-color: #1d4ed8; 
-    color: white;
-    box-shadow: 0 2px 8px rgba(29, 78, 216, 0.4);
-}
-.trend-selector span {
-    transition: all 0.2s ease-in-out;
-}
+/* --- ANALYTICS AND BUDGET SELECTOR STYLING FIX --- */
 
-/* Chart View Selectors */
+/* Base style for the selector groups */
 .view-selector-group {
     border-radius: 1rem;
     padding: 0.5rem;
     background-color: #f3f4f6;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-/* RESTORED: Light theme view selectors */
-.analytics-card .view-selector-group {
-    background-color: #f3ff6; 
-}
-.analytics-card .trend-selector input:checked + span {
-    background-color: #2563eb; /* Blue for light theme */
+
+/* When the radio button in a trend-selector container is checked */
+.trend-selector input:checked + span {
+    background-color: #2563eb; /* Active Blue */
     color: white !important;
     box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
 }
-.analytics-card .trend-selector span {
-    color: #374151 !important; /* Dark text for light background */
+
+/* Base style for all span elements in the trend selector (inactive state) */
+.trend-selector span {
+    transition: all 0.2s ease-in-out;
+    color: #374151; /* Default inactive text color (text-gray-700) */
 }
-.analytics-card .trend-selector input:checked + span {
-    color: white !important;
+
+/* When a span is hovered *and* is currently in the inactive state 
+   (managed by JavaScript removing active classes and adding hover/inactive classes) */
+.trend-selector span.hover\:bg-white\/10:hover {
+     background-color: rgba(255, 255, 255, 0.5); /* Lighter hover background for inactive buttons */
 }
+
+/* --- END ANALYTICS AND BUDGET SELECTOR STYLING FIX --- */
 
 
 /* Message Box Styling */
