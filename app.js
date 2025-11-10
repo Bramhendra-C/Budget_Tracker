@@ -48,6 +48,14 @@ const incomeColors = ['#059669', '#34d399', '#60a5fa', '#3b82f6', '#10b981'];
 // Helper to generate a unique ID
 const generateId = () => Date.now().toString() + Math.random().toString(16).slice(2);
 
+// --- NEW GLOBAL VARIABLE FOR SWIPE TRACKING ---
+let touchStartX = 0;
+const SWIPE_THRESHOLD = 75; // Minimum horizontal distance in pixels to register a swipe
+
+// --- VIEW ORDER DEFINITION ---
+// Used by the swipe logic to determine the next/previous view.
+const VIEW_ORDER = ['dashboard', 'analytics', 'budget-settings', 'recurring', 'goals'];
+
 // --- GLOBAL UTILITY FUNCTIONS (Exposed) ---
 
 /**
@@ -2190,6 +2198,77 @@ function updateBudgetPeriod(period) {
     renderBudgetSettings(); 
 }
 
+// --- NEW: SWIPE NAVIGATION LOGIC ---
+
+/**
+ * Initializes touch event listeners for swipe navigation on the main app frame.
+ */
+function setupSwipeNavigation() {
+    const appFrame = document.querySelector('.app-frame');
+    if (!appFrame) return;
+
+    // 1. Capture the start X coordinate
+    appFrame.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    });
+
+    // 2. Calculate the difference and execute view change on swipe end
+    appFrame.addEventListener('touchend', (e) => {
+        const touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const currentView = getCurrentViewName();
+        const currentIndex = VIEW_ORDER.indexOf(currentView);
+        
+        // Ignore short taps/drags and swipes on certain elements (like charts or modals)
+        if (Math.abs(diffX) < SWIPE_THRESHOLD || isTargetInIgnoredArea(e.target)) {
+            return;
+        }
+
+        if (diffX < 0) {
+            // Swipe Right to Left (Next View)
+            const nextIndex = currentIndex + 1;
+            if (nextIndex < VIEW_ORDER.length) {
+                showView(VIEW_ORDER[nextIndex]);
+            }
+        } else if (diffX > 0) {
+            // Swipe Left to Right (Previous View)
+            const prevIndex = currentIndex - 1;
+            if (prevIndex >= 0) {
+                showView(VIEW_ORDER[prevIndex]);
+            }
+        }
+    });
+}
+
+/**
+ * Helper to determine the currently visible view (based on the view name used in showView).
+ */
+function getCurrentViewName() {
+     if (!document.getElementById('dashboard-view').classList.contains('hidden')) return 'dashboard';
+     if (!document.getElementById('analytics-view').classList.contains('hidden')) return 'analytics';
+     if (!document.getElementById('budget-settings-view').classList.contains('hidden')) return 'budget-settings';
+     if (!document.getElementById('recurring-transactions-view').classList.contains('hidden')) return 'recurring';
+     if (!document.getElementById('savings-goals-view').classList.contains('hidden')) return 'goals';
+     // Default fallback
+     return 'dashboard'; 
+}
+
+/**
+ * Helper to ignore swipes that originate from certain interactive elements 
+ * (like the export modal or input fields).
+ */
+function isTargetInIgnoredArea(target) {
+    // Check if the target or any parent is within a modal or an input field
+    while (target && target !== document.body) {
+        if (target.id === 'export-modal' || target.id === 'budget-warning-modal' || 
+            target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+            return true;
+        }
+        target = target.parentElement;
+    }
+    return false;
+}
+
 // --- Core Functions (Exposed) ---
 
 function showView(viewName) {
@@ -2313,6 +2392,9 @@ function initializeApp() {
     // Initial state is Dashboard
     showView('dashboard'); 
     initLocalData();
+
+    // *** Setup swipe navigation upon app initialization ***
+    setupSwipeNavigation();
 }
 
 // --- Attach Initialization to Window Load ---
@@ -2343,7 +2425,6 @@ window.openExportModal = openExportModal;
 window.closeExportModal = closeExportModal;
 window.setExportRange = setExportRange;
 window.openAnalyticsExportModal = openAnalyticsExportModal; // EXPOSED
-
 
 // --- Event Listeners and Main Execution ---
 
