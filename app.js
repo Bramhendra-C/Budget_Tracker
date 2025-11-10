@@ -204,12 +204,31 @@ function saveTransactions(suppressMessage = false) {
     }
 }
 
-// --- Export/Download History Logic (NEW) ---
+// --- Export/Download History Logic ---
+
+function updateExportTypeSelector(radio) {
+    const value = radio.value;
+    ['All', 'Expense', 'Income'].forEach(type => {
+        const label = document.getElementById(`export-type-${type.toLowerCase()}`);
+        if (!label) return;
+        
+        if (type === value) {
+            label.classList.add('bg-blue-600', 'text-white');
+            label.classList.remove('text-gray-700', 'hover:bg-white');
+        } else {
+            label.classList.remove('bg-blue-600', 'text-white');
+            label.classList.add('text-gray-700', 'hover:bg-white');
+        }
+    });
+}
 
 function openExportModal() {
     document.getElementById('export-modal').style.display = 'flex';
     // Set default dates to the last 30 days
     setExportRange(30);
+    // Set default filter
+    document.querySelector('input[name="exportType"][value="All"]').checked = true;
+    updateExportTypeSelector(document.querySelector('input[name="exportType"][value="All"]'));
 }
 
 function closeExportModal() {
@@ -232,24 +251,98 @@ function setExportRange(days) {
     document.getElementById('export-end-date').value = formatToDateString(endDate);
 }
 
+/**
+ * Calculates the date range based on the currently selected analytics period 
+ * and opens the standard export modal, pre-setting the dates and type filter.
+ */
+function openAnalyticsExportModal() {
+    const period = currentPeriod;
+    const trendView = document.querySelector('input[name="trendView"]:checked').value;
+    const now = new Date();
+    let startDate = new Date(now);
+    let endDate = new Date(now);
+    
+    // 1. Calculate Date Range based on Analytics Period (last N days/weeks/months)
+    if (period === 'day') {
+        startDate.setDate(now.getDate() - 6); // Last 7 days
+    } else if (period === 'week') {
+        // Find start of current week (Sunday)
+        const dayOfWeek = now.getDay(); 
+        startDate.setDate(now.getDate() - dayOfWeek - (5 * 7)); // Last 6 weeks (start of 6th week ago)
+        endDate = new Date(now);
+    } else if (period === 'month') {
+        startDate.setMonth(now.getMonth() - 5); // Last 6 months
+        startDate.setDate(1); // Start of that month
+    } else if (period === 'year') {
+        startDate.setFullYear(now.getFullYear() - 2); // Last 3 years
+        startDate.setMonth(0, 1); // Start of that year
+    }
+    
+    // Normalize time for range calculation
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999); 
+    
+    const formatToDateString = (date) => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+    
+    // 2. Determine Export Type based on Analytics Trend View
+    let exportTypeToSelect = 'All';
+    if (trendView === 'expense') {
+        exportTypeToSelect = 'Expense';
+    } else if (trendView === 'income_expense' || trendView === 'net_flow') {
+        exportTypeToSelect = 'All'; // Both income and expense needed for these views
+    }
+    
+    // 3. Open Modal and Set Values
+    openExportModal(); // This function already makes the modal visible
+    
+    // Set Calculated Date Range
+    document.getElementById('export-start-date').value = formatToDateString(startDate);
+    document.getElementById('export-end-date').value = formatToDateString(endDate);
+    
+    // Set Transaction Type Filter based on view
+    const radio = document.querySelector(`input[name="exportType"][value="${exportTypeToSelect}"]`);
+    if (radio) {
+        radio.checked = true;
+        updateExportTypeSelector(radio);
+    }
+}
+
 function exportTransactionsToCSV(startDateString, endDateString) {
     const startDate = new Date(startDateString);
     const endDate = new Date(endDateString);
     endDate.setHours(23, 59, 59, 999); // Include transactions up to the end of the end date
+    
+    // Get selected transaction type filter
+    const exportType = document.querySelector('input[name="exportType"]:checked').value; // 'All', 'Expense', 'Income'
 
     // Headers for the CSV file
     let csv = "Date,Time,Type,Amount (INR),Category,Description,Transaction ID\n";
     
-    // Filter and sort transactions
+    // Filter transactions based on date and type
     const filteredTransactions = transactions.filter(t => {
         if (!t.timestamp || typeof t.timestamp.seconds !== 'number') return false;
 
         const transactionDate = new Date(t.timestamp.seconds * 1000);
-        return transactionDate >= startDate && transactionDate <= endDate;
+        const isDateValid = transactionDate >= startDate && transactionDate <= endDate;
+        
+        if (!isDateValid) return false;
+
+        if (exportType === 'Expense') {
+            return t.type === 'expense';
+        } else if (exportType === 'Income') {
+            return t.type === 'income';
+        }
+        return true; // 'All'
+        
     }).sort((a, b) => a.timestamp.seconds - b.timestamp.seconds); // Sort oldest first
 
     if (filteredTransactions.length === 0) {
-        showMessage('No transactions found in the selected date range.', 'warning');
+        showMessage('No transactions found in the selected date and type range.', 'warning');
         return;
     }
 
@@ -275,7 +368,7 @@ function exportTransactionsToCSV(startDateString, endDateString) {
     if (link.download !== undefined) {
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', `Ledger_Export_${startDateString}_to_${endDateString}.csv`);
+        link.setAttribute('download', `Ledger_Export_${exportType}_${startDateString}_to_${endDateString}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -397,14 +490,24 @@ function showBudgetWarning(category, period, limit, spent, percentage) {
     const modal = document.getElementById('budget-warning-modal');
     const messageText = document.getElementById('warning-message-text');
     const editBtn = document.getElementById('modal-edit-budget-btn');
+    const modalContent = document.getElementById('budget-warning-content');
+    const svg = modalContent.querySelector('svg');
     
-    // Re-set context for Budget Warning
-    document.querySelector('#budget-warning-content h3').textContent = 'Budget Limit Warning!';
-
+    // Update SVG icon/color based on severity
+    if (percentage >= 100) {
+        svg.classList.remove('text-yellow-500');
+        svg.classList.add('text-red-500'); 
+        document.querySelector('#budget-warning-content h3').textContent = 'Budget Limit Exceeded!';
+    } else {
+        svg.classList.add('text-yellow-500');
+        document.querySelector('#budget-warning-content h3').textContent = 'Budget Limit Warning!';
+    }
+    
     messageText.innerHTML = `
         The **${category} (${period})** budget has reached **${Math.round(percentage)}%** of its limit of **${formatCurrency(limit)}**.
         <br><br>
         Current Spent: ${formatCurrency(spent)}
+        ${percentage > 100 ? `<br><span class="text-red-600 font-bold">${formatCurrency(spent - limit)} OVER BUDGET</span>` : ''}
     `;
     
     // Set data attributes on the edit button for later use
@@ -424,34 +527,40 @@ function showBudgetWarning(category, period, limit, spent, percentage) {
 
 function getNextRecurrenceDate(rule, startDate) {
      const lastDate = new Date(startDate);
-     const now = new Date();
      let nextDate = new Date(lastDate);
-     
-     // Ensure we always move forward in time
-     do {
-         nextDate = new Date(nextDate); // Clone date for mutation
-         if (rule.frequency === 'Daily') {
-             nextDate.setDate(nextDate.getDate() + 1);
-         } else if (rule.frequency === 'Weekly') {
-             nextDate.setDate(nextDate.getDate() + 7);
-         } else if (rule.frequency === 'Monthly') {
-             // Increment month, then set the day of month, handling end-of-month correctly
+     nextDate.setHours(0, 0, 0, 0); // Normalize time
+
+     if (rule.frequency === 'Daily') {
+         nextDate.setDate(nextDate.getDate() + 1);
+     } else if (rule.frequency === 'Weekly') {
+         // Calculate next day of the week (rule.day: 0=Sun, 6=Sat)
+         const currentDay = nextDate.getDay();
+         const targetDay = rule.day;
+         let daysUntilNext = (targetDay - currentDay + 7) % 7;
+         if (daysUntilNext === 0) daysUntilNext = 7; // Go to next week if today is the day
+
+         nextDate.setDate(nextDate.getDate() + daysUntilNext);
+     } else if (rule.frequency === 'Monthly' || rule.frequency === 'Yearly') {
+         // Increment month/year
+         if (rule.frequency === 'Monthly') {
              nextDate.setMonth(nextDate.getMonth() + 1);
-             const dayOfMonth = rule.day;
-             // Only set day if it's less than the last day of the new month
-             const maxDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
-             nextDate.setDate(Math.min(dayOfMonth, maxDay));
-         } else if (rule.frequency === 'Yearly') {
+         } else { // Yearly
              nextDate.setFullYear(nextDate.getFullYear() + 1);
          }
-         // Reset time to ensure consistency (00:00:00 of the calculated day)
-         nextDate.setHours(0, 0, 0, 0);
-
-     } while (nextDate <= now);
+         
+         const dayOfMonth = rule.day;
+         // Find the last day of the target month
+         const maxDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+         // Set day, respecting the end of the month, but prioritizing rule.day
+         nextDate.setDate(Math.min(dayOfMonth, maxDay));
+     }
 
      return nextDate; 
 }
 
+/**
+ * OPTIMIZED: Processes recurring transactions by jumping to the next recurrence date.
+ */
 function processRecurringTransactions() {
      const now = new Date();
      now.setHours(0, 0, 0, 0); 
@@ -459,67 +568,53 @@ function processRecurringTransactions() {
      let newRecurringRules = [...recurringTransactions]; 
 
      newRecurringRules = newRecurringRules.map(rule => {
-         let lastDate = rule.lastGenerated || rule.createdAt;
-         let currentDate = new Date(lastDate);
+         // Initialize from lastGenerated or createdAt (normalized to start of day)
+         let lastGeneratedTimestamp = rule.lastGenerated || rule.createdAt;
+         let currentDate = new Date(lastGeneratedTimestamp);
          currentDate.setHours(0, 0, 0, 0);
 
-         while (currentDate <= now) {
-              if (currentDate.getTime() === new Date(lastDate).getTime()) {
-                  currentDate = getNextRecurrenceDate({ ...rule, day: rule.day || 1 }, currentDate);
-                  if (currentDate > now) break;
-              }
+         // Determine the first date to check (either creation date or next recurrence)
+         let runDate = new Date(lastGeneratedTimestamp);
+         runDate.setHours(0, 0, 0, 0);
 
-             let shouldGenerate = false;
-             let nextOccurrence = new Date(currentDate);
-
-             if (rule.frequency === 'Daily') {
-                 shouldGenerate = true;
-                 nextOccurrence.setDate(nextOccurrence.getDate() + 1); 
-             } else if (rule.frequency === 'Weekly') {
-                 if (currentDate.getDay() === rule.day) {
-                     shouldGenerate = true;
-                 }
-                 nextOccurrence.setDate(nextOccurrence.getDate() + 1);
-             } else if (rule.frequency === 'Monthly') {
-                 if (currentDate.getDate() === rule.day) {
-                     shouldGenerate = true;
-                 }
-                 nextOccurrence.setDate(nextOccurrence.getDate() + 1);
-             } else if (rule.frequency === 'Yearly') {
-                 if (currentDate.getDate() === rule.day && currentDate.getMonth() === new Date(rule.createdAt).getMonth()) {
-                     shouldGenerate = true;
-                 }
-                 nextOccurrence.setDate(nextOccurrence.getDate() + 1);
-             }
-
-             if (shouldGenerate) {
-                 const newTransaction = {
-                     id: generateId(),
-                     description: `${rule.description} (Auto)`,
-                     amount: Number(rule.amount),
-                     type: rule.type,
-                     category: rule.category,
-                     timestamp: { seconds: Math.floor(currentDate.getTime() / 1000) },
-                     recurringId: rule.id 
-                 };
-                 transactions.push(newTransaction);
-                 newTransactionsGenerated++;
-                 rule.lastGenerated = currentDate.getTime(); 
-             }
-
-             if (currentDate.getTime() === nextOccurrence.getTime()) {
-                 break; 
-             }
-             currentDate = nextOccurrence;
-             
-             const diffDays = Math.floor((now.getTime() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24));
-             if (diffDays > 365 * 2) break; 
-         }
-
-         if (rule.lastGenerated > lastDate) {
-             rule.lastGenerated = currentDate.getTime();
+         // Only calculate the jump for rules that were already generated once, 
+         // otherwise check the creation date first.
+         if (rule.lastGenerated) {
+             runDate = getNextRecurrenceDate(rule, runDate);
+             runDate.setHours(0, 0, 0, 0);
+         } else if (runDate > now) {
+              // If creation date is in the future, don't generate anything yet
+              return rule;
          }
          
+         // Loop until the next run date is in the future (> now)
+         while (runDate <= now) {
+             const newTransaction = {
+                 id: generateId(),
+                 description: `${rule.description} (Auto)`,
+                 amount: Number(rule.amount),
+                 type: rule.type,
+                 category: rule.category,
+                 timestamp: { seconds: Math.floor(runDate.getTime() / 1000) },
+                 recurringId: rule.id 
+             };
+             transactions.push(newTransaction);
+             newTransactionsGenerated++;
+             
+             // Update last generated date to the current successful run date
+             rule.lastGenerated = runDate.getTime(); 
+             
+             // Calculate the next date to check
+             runDate = getNextRecurrenceDate(rule, runDate);
+             runDate.setHours(0, 0, 0, 0); 
+             
+             // Safety break for unexpected infinite loops
+             if (newTransactionsGenerated > 1000) { 
+                 console.error("Safety break triggered: Too many recurring transactions generated.");
+                 break; 
+             }
+         }
+
          return rule;
      });
 
@@ -570,6 +665,34 @@ function renderActiveRecurringRules() {
 }
 
 /**
+ * FIX: Function to update the visual state of the recurring type selector.
+ */
+function updateRecurringTypeSelector(radio) {
+    const expenseLabel = document.getElementById('recurring-type-expense-label');
+    const incomeLabel = document.getElementById('recurring-type-income-label');
+    const isExpense = radio.value === 'expense';
+
+    // Remove Income Active State
+    incomeLabel.classList.remove('bg-green-600', 'text-white', 'shadow-lg', 'shadow-green-500/30');
+    incomeLabel.classList.add('text-gray-700', 'hover:bg-white', 'shadow-none');
+    
+    // Remove Expense Active State
+    expenseLabel.classList.remove('bg-red-600', 'text-white', 'shadow-lg', 'shadow-red-500/30');
+    expenseLabel.classList.add('text-gray-700', 'hover:bg-white', 'shadow-none');
+
+
+    if (isExpense) {
+        // Activate Expense
+        expenseLabel.classList.add('bg-red-600', 'text-white', 'shadow-lg', 'shadow-red-500/30');
+        expenseLabel.classList.remove('text-gray-700', 'hover:bg-white', 'shadow-none');
+    } else {
+        // Activate Income
+        incomeLabel.classList.add('bg-green-600', 'text-white', 'shadow-lg', 'shadow-green-500/30');
+        incomeLabel.classList.remove('text-gray-700', 'hover:bg-white', 'shadow-none');
+    }
+}
+
+/**
  * Function to pre-populate the recurring form for editing.
  */
 function editRecurring(ruleId) {
@@ -577,7 +700,9 @@ function editRecurring(ruleId) {
     if (!rule) return;
 
     // Set type radio button
-    document.querySelector(`input[name="recurringType"][value="${rule.type}"]`).checked = true;
+    const radio = document.querySelector(`input[name="recurringType"][value="${rule.type}"]`);
+    radio.checked = true;
+    updateRecurringTypeSelector(radio); // FIX: Update colors when editing
     
     document.getElementById('recurring-description').value = rule.description;
     document.getElementById('recurring-amount').value = rule.amount;
@@ -1059,6 +1184,33 @@ function loadBudgetForEdit(category) {
     amountInput.value = budget;
 }
 
+// Helper to get current spending for a category/period
+function getCategorySpending(category, period) {
+    const now = new Date();
+    let startDate;
+
+    if (period === 'Daily') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (period === 'Monthly') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (period === 'Yearly') {
+        startDate = new Date(now.getFullYear(), 0, 1);
+    } else {
+        return 0;
+    }
+    
+    const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+    const spent = transactions.reduce((sum, t) => {
+        if (t.type === 'expense' && t.category === category && t.timestamp && t.timestamp.seconds >= startTimestamp) {
+            return sum + Number(t.amount);
+        }
+        return sum;
+    }, 0);
+    
+    return spent;
+}
+
 /**
  * Renders the budget progress bars on the dashboard.
  */
@@ -1066,27 +1218,12 @@ function renderBudgetProgress() {
     const listElement = document.getElementById('budget-progress-list');
     listElement.innerHTML = '';
     
-    // 1. Calculate current expense totals by category and period for today
-    const periodExpenses = transactions.reduce((acc, t) => {
-        if (t.type === 'expense' && t.timestamp && typeof t.timestamp.seconds === 'number') {
-            const date = new Date(t.timestamp.seconds * 1000);
-            const amount = Number(t.amount);
-            
-            acc[t.category] = acc[t.category] || {};
-
-            // Calculate Daily spending for today
-            if (date.toDateString() === new Date().toDateString()) {
-               acc[t.category]['Daily'] = (acc[t.category]['Daily'] || 0) + amount;
-            }
-            // Calculate Monthly spending for this month
-            if (date.getFullYear() === new Date().getFullYear() && date.getMonth() === new Date().getMonth()) {
-                acc[t.category]['Monthly'] = (acc[t.category]['Monthly'] || 0) + amount;
-            }
-            // Calculate Yearly spending for this year
-            if (date.getFullYear() === new Date().getFullYear()) {
-               acc[t.category]['Yearly'] = (acc[t.category]['Yearly'] || 0) + amount;
-            }
-        }
+    // 1. Calculate current expense totals for this moment
+    const periodExpenses = EXPENSE_CATEGORIES.reduce((acc, category) => {
+        acc[category] = {};
+        acc[category]['Daily'] = getCategorySpending(category, 'Daily');
+        acc[category]['Monthly'] = getCategorySpending(category, 'Monthly');
+        acc[category]['Yearly'] = getCategorySpending(category, 'Yearly');
         return acc;
     }, {});
     
@@ -1099,7 +1236,8 @@ function renderBudgetProgress() {
             
             if (limit > 0) {
                 const spent = periodExpenses[category]?.[period] || 0;
-                const percentage = limit > 0 ? Math.min(100, (spent / limit) * 100) : (spent > 0 ? 100 : 0);
+                const percentage = limit > 0 ? (spent / limit) * 100 : (spent > 0 ? 100 : 0);
+                const displayPercentage = Math.min(100, percentage);
                 
                 let progressBarClass = 'bg-budget-green';
                 let statusText = 'On Track';
@@ -1125,7 +1263,7 @@ function renderBudgetProgress() {
                         <span class="${remaining < 0 ? 'text-red-600 font-bold' : 'text-gray-600'}">${formatCurrency(Math.abs(remaining))} ${remaining < 0 ? 'Over' : 'Left'}</span>
                     </div>
                     <div class="w-full bg-gray-200 rounded-full h-2.5">
-                        <div class="h-2.5 rounded-full ${progressBarClass} transition-all duration-500" style="width: ${percentage}%"></div>
+                        <div class="h-2.5 rounded-full ${progressBarClass} transition-all duration-500" style="width: ${displayPercentage}%"></div>
                     </div>
                 `;
                 listElement.appendChild(progressElement);
@@ -1164,7 +1302,7 @@ function renderBudgetSettings() {
 
                         <button class="delete-budget-btn text-gray-400 hover:text-red-500 transition-colors duration-150 p-1 rounded"
                                     data-category="${category}" data-period="${period}" title="Remove Budget">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></path></svg>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
                     </div>
                 `;
@@ -1238,6 +1376,7 @@ function addTransaction(transactionData) {
         const [hours, minutes] = timeString.split(':').map(Number);
         baseDate.setHours(hours, minutes, 0, 0);
     } else if (dateString && !timeString) {
+        // If only date is provided, use current time
         baseDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
     }
 
@@ -1255,11 +1394,35 @@ function addTransaction(transactionData) {
     let budgetWarningDetails = null;
 
     transactions.push(newTransaction);
+    
+    // --- START BUDGET WARNING LOGIC (NEW/FIXED) ---
+    if (newTransaction.type === 'expense') {
+        const category = newTransaction.category;
+        const periodsToCheck = ['Daily', 'Monthly', 'Yearly'];
+        
+        for (const period of periodsToCheck) {
+            const limit = budgets[category]?.[period];
+            if (limit && limit > 0) {
+                // Calculate current spent *after* adding the new transaction
+                const spent = getCategorySpending(category, period);
+                const percentage = (spent / limit) * 100;
+                
+                // Trigger warning if approaching (80%) or exceeding (100%)
+                if (percentage >= 80) {
+                    budgetWarningDetails = { category, period, limit, spent, percentage };
+                    // Break after showing the first warning to prevent modal overlap
+                    break; 
+                }
+            }
+        }
+    }
+    // --- END BUDGET WARNING LOGIC ---
+    
     saveTransactions();
     
     if (budgetWarningDetails) {
-        // Simplified for brevity, normally calculated by comparing new transaction
-        showBudgetWarning(newTransaction.category, 'Monthly', 1000, 950, 95); 
+        const { category, period, limit, spent, percentage } = budgetWarningDetails;
+        showBudgetWarning(category, period, limit, spent, percentage);
     } else {
         showMessage("Transaction added successfully!", 'success');
     }
@@ -1341,17 +1504,7 @@ function renderDoughnutChart(chartVar, ctxId, labels, data, totalMetricId, total
                      } 
                  }, 
                  title: { display: false },
-                 datalabels: {
-                     formatter: (value, context) => {
-                         if (totalAmount === 0) return '';
-                         const percentage = Math.round((value / totalAmount) * 100);
-                         return percentage > 10 ? percentage + '%' : '';  
-                     },
-                     color: '#fff',
-                     font: { weight: 'extrabold', size: 14 }, 
-                     textShadowBlur: 4,
-                     textShadowColor: 'rgba(0, 0, 0, 0.5)'
-                 },
+                 // REMOVED DATALABELS PLUGIN FOR DECLUTTERING MOBILE VIEW
                   tooltip: {
                       callbacks: {
                           label: function(context) {
@@ -1363,7 +1516,8 @@ function renderDoughnutChart(chartVar, ctxId, labels, data, totalMetricId, total
                   }
              }
          },
-         plugins: [ChartDataLabels]
+         // REMOVED ChartDataLabels from plugins array
+         plugins: []
      });
      return newChart;
 }
@@ -1407,6 +1561,7 @@ function renderTrendChart(data, viewMode) {
                 return gradient;
             } else if (label === 'Net Flow') {
                 const value = context.parsed.y;
+                // FIX: Use Net Flow-specific colors
                 const color = value >= 0 ? surplusColor : deficitColor;
                 const lightColor = value >= 0 ? '#34d399' : '#fca5a5';
                 
@@ -1454,7 +1609,8 @@ function renderTrendChart(data, viewMode) {
                     stacked: false, 
                     beginAtZero: true, 
                     title: { display: true, text: yAxesTitle, color: '#1f2937', font: { weight: 'bold' } }, 
-                    ticks: { color: '#4b5563', callback: (value) => formatCurrency(value) },
+                    // FIX: Hide the currency amount labels on the y-axis
+                    ticks: { display: false }, 
                     grid: { color: gridColor, lineWidth: 1 } 
                 }
             },
@@ -1483,6 +1639,7 @@ function renderTrendChart(data, viewMode) {
                             if (label) {
                                 label += ': ';
                             }
+                            // FIX: Add back the currency format for the tooltip label
                             label += formatCurrency(context.parsed.y);
                             return label;
                         }
@@ -1498,6 +1655,7 @@ function renderCharts(data) {
      const selectedView = document.querySelector('input[name="trendView"]:checked')?.value || 'expense';
      renderTrendChart(data, selectedView);
      
+     // Doughnut charts rendered without ChartDataLabels
      breakdownChart = renderDoughnutChart(
           breakdownChart, 
           'categoryBreakdownChart', 
@@ -1521,19 +1679,26 @@ function renderCharts(data) {
      );
 }
 
+/**
+ * FIX: Consolidate color logic for trend view selectors.
+ */
 function updateTrendChart() {
     const selectedValue = document.querySelector('input[name="trendView"]:checked').value;
     
+    // List all three trend labels
     ['expense', 'income_expense', 'net_flow'].forEach(val => {
         const label = document.getElementById(`trend-${val}-label`);
         if (!label) return; 
         
+        // Check if the current button matches the selected radio button value
         if (val === selectedValue) {
+            // Set Active State (Blue Background, White Text)
             label.classList.add('bg-blue-600', 'text-white');
-            label.classList.remove('hover:bg-white/10', 'text-gray-700');
+            label.classList.remove('text-gray-700', 'hover:bg-white/10');
         } else {
+            // Set Inactive State (Transparent/Gray Background, Gray Text)
             label.classList.remove('bg-blue-600', 'text-white');
-            label.classList.add('hover:bg-white/10', 'text-gray-700');
+            label.classList.add('text-gray-700', 'hover:bg-white/10');
         }
     });
 
@@ -2036,47 +2201,57 @@ function showView(viewName) {
     document.getElementById('recurring-transactions-view').classList.add('hidden'); 
     document.getElementById('savings-goals-view').classList.add('hidden'); 
 
-    // Reset navigation bar colors - UPDATED to include 'nav-budget'
+    // Reset navigation bar colors 
     const navButtons = ['nav-dashboard', 'nav-analytics', 'nav-budget', 'nav-recurring', 'nav-goals'];
     navButtons.forEach(id => {
          const btn = document.getElementById(id);
          if (btn) {
-             btn.classList.remove('nav-button-active', 'text-gray-500');
+             btn.classList.remove('nav-button-active');
              btn.classList.add('text-gray-500');
          }
     });
 
+    const activeBtn = document.getElementById(`nav-${viewName.split('-')[0]}`);
 
     if (viewName === 'dashboard') {
         document.getElementById('dashboard-view').classList.remove('hidden');
-        document.getElementById('nav-dashboard').classList.add('nav-button-active');
     } else if (viewName === 'analytics') {
         document.getElementById('analytics-view').classList.remove('hidden');
-        document.getElementById('nav-analytics').classList.add('nav-button-active');
         
         // Re-calculate and render charts upon entering analytics view
         aggregatedData = aggregateData(transactions, currentPeriod); 
         renderCharts(aggregatedData);
+        updateAnalyticsPeriod(currentPeriod);
+        updateTrendChart(); // FIX: Ensures trend view colors are correct on navigation
     } else if (viewName === 'list') {
         document.getElementById('full-list-view').classList.remove('hidden');
         renderAllTransactions(); 
     } else if (viewName === 'budget-settings') {
         document.getElementById('budget-settings-view').classList.remove('hidden');
-        document.getElementById('nav-budget').classList.add('nav-button-active'); // Set new budget button as active
         renderBudgetSettings();
     } else if (viewName === 'import-transactions') {
         document.getElementById('import-transactions-view').classList.remove('hidden');
     } else if (viewName === 'recurring') {
         document.getElementById('recurring-transactions-view').classList.remove('hidden');
-        document.getElementById('nav-recurring').classList.add('nav-button-active');
         renderRecurringTransactions();
+        // FIX: Ensure correct initial state is set when entering recurring view
+        const initialRadio = document.querySelector('input[name="recurringType"]:checked');
+        if (initialRadio) updateRecurringTypeSelector(initialRadio);
     } else if (viewName === 'goals') {
         document.getElementById('savings-goals-view').classList.remove('hidden');
-        document.getElementById('nav-goals').classList.add('nav-button-active');
         renderGoalsProgress();
+    }
+    
+    // Set the correct active state after view logic runs
+    if (activeBtn) {
+        activeBtn.classList.remove('text-gray-500');
+        activeBtn.classList.add('nav-button-active');
     }
 }
 
+/**
+ * FIX: Consolidate color logic for time period selectors.
+ */
 function updateAnalyticsPeriod(period) {
     currentPeriod = period;
 
@@ -2087,10 +2262,10 @@ function updateAnalyticsPeriod(period) {
         
         if (val === period) {
             label.classList.add('bg-blue-600', 'text-white');
-            label.classList.remove('hover:bg-white/10', 'text-gray-700');
+            label.classList.remove('text-gray-700', 'hover:bg-white/10');
         } else {
             label.classList.remove('bg-blue-600', 'text-white');
-            label.classList.add('hover:bg-white/10', 'text-gray-700');
+            label.classList.add('text-gray-700', 'hover:bg-white/10');
         }
     });
 
@@ -2114,7 +2289,7 @@ function initializeApp() {
     // Initial styling for analytics selectors
     updateAnalyticsPeriod('month');
     
-    // Initial styling for transaction type selector
+    // Initial styling for transaction type selector (Quick Add)
     document.querySelector('input[name="transactionType"][value="expense"]').checked = true;
     updateTypeSelector(document.querySelector('input[name="transactionType"][value="expense"]'));
     
@@ -2122,19 +2297,20 @@ function initializeApp() {
     document.querySelector('input[name="budgetPeriod"][value="Monthly"]').checked = true;
     updateBudgetPeriod('Monthly');
     
-    // Initial recurring view setup
-    document.querySelector('input[name="recurringType"][value="expense"]').checked = true;
+    // Initial recurring view setup (type selector)
+    const recurringRadio = document.querySelector('input[name="recurringType"][value="expense"]');
+    if (recurringRadio) {
+        recurringRadio.checked = true;
+        updateRecurringTypeSelector(recurringRadio); 
+    }
     toggleRecurringDayInput(document.getElementById('recurring-frequency').value);
+    
+    // Set default trend view check
+    document.querySelector('input[name="trendView"][value="expense"]').checked = true;
+    updateTrendChart();
 
 
-    // Initial styling for navigation
-    document.getElementById('nav-dashboard').classList.add('nav-button-active');
-    document.getElementById('nav-analytics').classList.remove('nav-button-active');
-    document.getElementById('nav-budget').classList.remove('nav-button-active');
-    document.getElementById('nav-recurring').classList.remove('nav-button-active');
-    document.getElementById('nav-goals').classList.remove('nav-button-active');
-
-
+    // Initial state is Dashboard
     showView('dashboard'); 
     initLocalData();
 }
@@ -2147,6 +2323,7 @@ window.showView = showView;
 window.updateTrendChart = updateTrendChart;
 window.updateAnalyticsPeriod = updateAnalyticsPeriod; 
 window.updateTypeSelector = updateTypeSelector; 
+window.updateRecurringTypeSelector = updateRecurringTypeSelector; // EXPOSED
 window.renderAllTransactions = renderAllTransactions; 
 window.saveBudgets = saveBudgets; 
 window.loadBudgetForEdit = loadBudgetForEdit; 
@@ -2159,11 +2336,13 @@ window.depositToGoal = depositToGoal;
 window.editRecurring = editRecurring; 
 window.editGoal = editGoal;
 window.withdrawFromGoal = withdrawFromGoal; 
+window.updateExportTypeSelector = updateExportTypeSelector; 
 
 // New Exposed Functions for Export
 window.openExportModal = openExportModal;
 window.closeExportModal = closeExportModal;
 window.setExportRange = setExportRange;
+window.openAnalyticsExportModal = openAnalyticsExportModal; // EXPOSED
 
 
 // --- Event Listeners and Main Execution ---
@@ -2202,7 +2381,7 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
         document.getElementById('date').value = `${yyyy}-${mm}-${dd}`;
-        document.getElementById('time').value = ''; 
+        document.getElementById('time').value = ''; // FIX: Clear time input
 
         // Reset type selector to default (Expense)
         document.querySelector('input[name="transactionType"][value="expense"]').checked = true;
@@ -2389,6 +2568,10 @@ document.getElementById('recurring-form').addEventListener('submit', (e) => {
         submitBtn.textContent = 'SAVE RECURRING RULE';
         delete submitBtn.dataset.editId;
         
+        // FIX: Ensure reset sets Expense (default) colors
+        updateRecurringTypeSelector(document.querySelector('input[name="recurringType"][value="expense"]'));
+
+
     } else {
          showMessage("Please enter valid description, amount (> 0), and frequency settings.", 'error');
     }
